@@ -1,21 +1,23 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{ShellCore, Feeder};
-use crate::error::exec::ExecError;
-use crate::error::parse::ParseError;
 use super::{Command, Redirect};
-use crate::elements::command;
-use crate::elements::expr::conditional::ConditionalExpr;
-use crate::elements::expr::conditional::elem::CondElem;
+use crate::{
+    Feeder, ShellCore,
+    elements::{
+        command,
+        expr::conditional::{ConditionalExpr, elem::CondElem},
+    },
+    error::{exec::ExecError, parse::ParseError},
+};
 
 #[derive(Debug, Clone, Default)]
 pub struct TestCommand {
-    text: String,
-    cond: Option<ConditionalExpr>,
-    redirects: Vec<Redirect>,
+    text:       String,
+    cond:       Option<ConditionalExpr>,
+    redirects:  Vec<Redirect>,
     force_fork: bool,
-    lineno: usize,
+    lineno:     usize,
 }
 
 impl Command for TestCommand {
@@ -26,31 +28,43 @@ impl Command for TestCommand {
         }
 
         match self.cond.clone().unwrap().eval(core) {
-            Ok(CondElem::Ans(true))  => core.db.exit_status = 0,
+            Ok(CondElem::Ans(true)) => core.db.exit_status = 0,
             Ok(CondElem::Ans(false)) => core.db.exit_status = 1,
-            Err(err_msg)  => {
+            Err(err_msg) => {
                 core.db.exit_status = 2;
                 return Err(err_msg);
             },
-            _  => {
+            _ => {
                 core.db.exit_status = 2;
                 return Err(ExecError::Other("unknown error".to_string()));
             },
-        } ;
+        };
         Ok(())
     }
 
-    fn get_text(&self) -> String { self.text.clone() }
-    fn get_redirects(&mut self) -> &mut Vec<Redirect> { &mut self.redirects }
-    fn get_lineno(&mut self) -> usize { self.lineno }
-    fn set_force_fork(&mut self) { self.force_fork = true; }
-    fn boxed_clone(&self) -> Box<dyn Command> {Box::new(self.clone())}
-    fn force_fork(&self) -> bool { self.force_fork }
+    fn get_text(&self) -> String {
+        self.text.clone()
+    }
+    fn get_redirects(&mut self) -> &mut Vec<Redirect> {
+        &mut self.redirects
+    }
+    fn get_lineno(&mut self) -> usize {
+        self.lineno
+    }
+    fn set_force_fork(&mut self) {
+        self.force_fork = true;
+    }
+    fn boxed_clone(&self) -> Box<dyn Command> {
+        Box::new(self.clone())
+    }
+    fn force_fork(&self) -> bool {
+        self.force_fork
+    }
 }
 
 impl TestCommand {
     pub fn parse(feeder: &mut Feeder, core: &mut ShellCore) -> Result<Option<Self>, ParseError> {
-        if ! feeder.starts_with("[[") {
+        if !feeder.starts_with("[[") {
             return Ok(None);
         }
 
@@ -75,7 +89,7 @@ impl TestCommand {
             command::eat_redirects(feeder, core, &mut ans.redirects, &mut ans.text)?;
             return Ok(Some(ans));
         }
-    
+
         Ok(None)
     }
 }

@@ -1,8 +1,7 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{file_check, Script, ShellCore, Feeder};
-use crate::error::parse::ParseError;
+use crate::{Feeder, Script, ShellCore, error::parse::ParseError, file_check};
 
 fn check_error(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
     if core.db.flags.contains('r') {
@@ -54,7 +53,7 @@ pub fn source(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
     feeder.main_feeder = true;
     loop {
         match feeder.feed_line(core) {
-            Ok(()) => {}, 
+            Ok(()) => {},
             _ => break,
         }
 
@@ -62,10 +61,12 @@ pub fn source(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
             feeder.consume(feeder.len());
         }
 
-        match Script::parse(&mut feeder, core, false){
-            Ok(Some(mut s)) => {let _ = s.exec(core); },
+        match Script::parse(&mut feeder, core, false) {
+            Ok(Some(mut s)) => {
+                let _ = s.exec(core);
+            },
             Err(e) => e.print(core),
-            _ => { },
+            _ => {},
         }
     }
 

@@ -1,10 +1,8 @@
-//SPDX-FileCopyrightText: 2023 Ryuichi Ueda <ryuichiueda@gmail.com>
-//SPDX-FileCopyrightText: 2023 @caro@mi.shellgei.org
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2023 Ryuichi Ueda <ryuichiueda@gmail.com>
+// SPDX-FileCopyrightText: 2023 @caro@mi.shellgei.org
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{error, ShellCore};
-use crate::arg;
-use crate::utils::file;
+use crate::{ShellCore, arg, error, utils::file};
 
 pub fn cd(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
     if core.db.flags.contains('r') {
@@ -18,13 +16,16 @@ pub fn cd(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
         return 1;
     }
 
-    if args.len() == 1 { //only "cd"
+    if args.len() == 1 {
+        // only "cd"
         return cd_1arg(core, args);
     }
 
-    if args[1] == "-" { // cd -
+    if args[1] == "-" {
+        // cd -
         cd_oldpwd(core, args)
-    }else{ // cd /some/dir
+    } else {
+        // cd /some/dir
         set_oldpwd(core);
         change_directory(core, args)
     }
@@ -64,7 +65,7 @@ fn change_directory(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
     if core.set_current_directory(&path).is_ok() {
         let _ = core.db.set_param("PWD", &path.display().to_string(), Some(0));
         0
-    }else{
+    } else {
         eprintln!("sush: cd: {:?}: No such file or directory", &path);
         1
     }

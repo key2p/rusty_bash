@@ -1,15 +1,17 @@
-//SPDXFileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDXLicense-Identifier: BSD-3-Clause
+// SPDXFileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDXLicense-Identifier: BSD-3-Clause
 
-use crate::error::exec::ExecError;
-use rand_chacha::ChaCha20Rng;
-use rand_chacha::rand_core::RngCore;
-use rand_chacha::rand_core::SeedableRng;
+use rand_chacha::{
+    ChaCha20Rng,
+    rand_core::{RngCore, SeedableRng},
+};
+
 use super::Data;
+use crate::error::exec::ExecError;
 
 #[derive(Debug, Clone)]
 pub struct RandomVar {
-    rng: ChaCha20Rng,
+    rng:  ChaCha20Rng,
     prev: String,
 }
 
@@ -18,7 +20,9 @@ impl Data for RandomVar {
         Box::new(self.clone())
     }
 
-    fn print_body(&self) -> String { self.prev.clone() }
+    fn print_body(&self) -> String {
+        self.prev.clone()
+    }
 
     fn get_as_single(&mut self) -> Result<String, ExecError> {
         let rand = self.rng.next_u32() & 0x7FFF;
@@ -36,14 +40,13 @@ impl Data for RandomVar {
         Ok(())
     }
 
-    fn is_special(&self) -> bool {true}
+    fn is_special(&self) -> bool {
+        true
+    }
 }
 
 impl RandomVar {
     pub fn new() -> Self {
-        Self {
-            rng: ChaCha20Rng::seed_from_u64(0),
-            prev: "".to_string(),
-        }
+        Self { rng: ChaCha20Rng::seed_from_u64(0), prev: "".to_string() }
     }
 }

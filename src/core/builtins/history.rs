@@ -1,10 +1,12 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::ShellCore;
-use crate::utils::arg;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::{
+    fs::File,
+    io::{BufRead, BufReader},
+};
+
+use crate::{ShellCore, utils::arg};
 
 pub fn history_c(core: &mut ShellCore) -> i32 {
     core.rewritten_history.clear();
@@ -32,7 +34,7 @@ pub fn history(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
 
     let file = match File::open(&filename) {
         Ok(f) => f,
-        _     => return 0,
+        _ => return 0,
     };
 
     let f = BufReader::new(file);

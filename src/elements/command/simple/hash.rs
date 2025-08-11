@@ -1,12 +1,10 @@
-//SPDX-FileCopyrightText: 2025 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2025 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{ShellCore, utils};
 use super::SimpleCommand;
-use crate::elements::command::ExecError;
+use crate::{ShellCore, elements::command::ExecError, utils};
 
-pub fn get_and_regist(com: &mut SimpleCommand, core: &mut ShellCore)
--> Result<String, ExecError> {
+pub fn get_and_regist(com: &mut SimpleCommand, core: &mut ShellCore) -> Result<String, ExecError> {
     if ["/", "./", "../"].iter().any(|p| com.args[0].starts_with(p)) {
         return Ok(com.args[0].clone());
     }
@@ -21,8 +19,7 @@ pub fn get_and_regist(com: &mut SimpleCommand, core: &mut ShellCore)
     Ok(path)
 }
 
-fn resolve_path(arg: &String, core: &mut ShellCore)
--> Result<String, ExecError> {
+fn resolve_path(arg: &String, core: &mut ShellCore) -> Result<String, ExecError> {
     let path = utils::get_command_path(arg, core);
     if path.is_empty() {
         return Ok(path);
@@ -41,6 +38,8 @@ fn resolve_path(arg: &String, core: &mut ShellCore)
 fn count_up(arg: &String, core: &mut ShellCore) {
     match core.db.hash_counter.get_mut(arg) {
         Some(v) => *v += 1,
-        None => {core.db.hash_counter.insert(arg.to_string(), 1);},
+        None => {
+            core.db.hash_counter.insert(arg.to_string(), 1);
+        },
     }
 }

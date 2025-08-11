@@ -1,39 +1,47 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{Feeder, ShellCore};
-use crate::error::exec::ExecError;
-use crate::elements::word::{Word, WordMode};
-use crate::utils::glob;
-use crate::utils::glob::GlobElem;
-use crate::error::parse::ParseError;
-use super::super::Variable;
-use super::super::optional_operation::OptionalOperation;
+use super::super::{Variable, optional_operation::OptionalOperation};
+use crate::{
+    Feeder, ShellCore,
+    elements::word::{Word, WordMode},
+    error::{exec::ExecError, parse::ParseError},
+    utils::{glob, glob::GlobElem},
+};
 
 #[derive(Debug, Clone, Default)]
 pub struct Replace {
-    pub text: String,
+    pub text:              String,
     pub head_only_replace: bool,
     pub tail_only_replace: bool,
-    pub all_replace: bool,
-    pub replace_from: Option<Word>,
-    pub replace_to: Option<Word>,
-    pub has_replace_to: bool,
+    pub all_replace:       bool,
+    pub replace_from:      Option<Word>,
+    pub replace_to:        Option<Word>,
+    pub has_replace_to:    bool,
 }
 
 impl OptionalOperation for Replace {
-    fn get_text(&self) -> String {self.text.clone()}
+    fn get_text(&self) -> String {
+        self.text.clone()
+    }
     fn exec(&mut self, param: &Variable, text: &String, core: &mut ShellCore) -> Result<String, ExecError> {
         match core.db.exist(&param.name) {
-            true  => self.get_text(text, core),
+            true => self.get_text(text, core),
             false => Ok("".to_string()),
         }
     }
 
-    fn boxed_clone(&self) -> Box<dyn OptionalOperation> {Box::new(self.clone())}
+    fn boxed_clone(&self) -> Box<dyn OptionalOperation> {
+        Box::new(self.clone())
+    }
 
-    fn set_array(&mut self, param: &Variable, array: &mut Vec<String>,
-                    text: &mut String, core: &mut ShellCore) -> Result<(), ExecError> {
+    fn set_array(
+        &mut self,
+        param: &Variable,
+        array: &mut Vec<String>,
+        text: &mut String,
+        core: &mut ShellCore,
+    ) -> Result<(), ExecError> {
         *array = match param.name.as_str() {
             "@" | "*" => core.db.get_position_params(),
             _ => core.db.get_vec(&param.name, true)?,
@@ -43,8 +51,7 @@ impl OptionalOperation for Replace {
             array[i] = self.get_text(&array[i], core)?;
         }
 
-        if param.name == "@"
-        || (param.index.is_some() && param.index.as_ref().unwrap().text == "[@]") {
+        if param.name == "@" || (param.index.is_some() && param.index.as_ref().unwrap().text == "[@]") {
             *text = array.join(" ");
             return Ok(());
         }
@@ -54,7 +61,9 @@ impl OptionalOperation for Replace {
         Ok(())
     }
 
-    fn has_array_replace(&self) -> bool {true}
+    fn has_array_replace(&self) -> bool {
+        true
+    }
 }
 
 impl Replace {
@@ -74,7 +83,7 @@ impl Replace {
 
     fn get_text_head(text: &String, pattern: &Vec<GlobElem>, string_to: &String) -> Result<String, ExecError> {
         let len = glob::longest_match_length(text, pattern);
-        if len == 0 && ! pattern.is_empty() {
+        if len == 0 && !pattern.is_empty() {
             return Ok(text.clone());
         }
 
@@ -111,7 +120,7 @@ impl Replace {
 
         if self.head_only_replace {
             return Self::get_text_head(text, &pattern, &string_to);
-        }else if self.tail_only_replace {
+        } else if self.tail_only_replace {
             return Self::get_text_tail(text, &pattern, &string_to);
         }
 
@@ -124,34 +133,34 @@ impl Replace {
                 start += ch.len_utf8();
                 continue;
             }
-    
+
             let len = glob::longest_match_length(&text[start..].to_string(), &pattern);
             if len != 0 && self.tail_only_replace {
                 if len == text[start..].len() {
-                    return Ok([&text[..start], &string_to[0..] ].concat());
-                }else{
+                    return Ok([&text[..start], &string_to[0..]].concat());
+                } else {
                     ans += &ch.to_string();
                     start += ch.len_utf8();
                     continue;
                 }
-            } else if len != 0 && ! self.all_replace {
-                return Ok([&text[..start], &string_to[0..], &text[start+len..] ].concat());
+            } else if len != 0 && !self.all_replace {
+                return Ok([&text[..start], &string_to[0..], &text[start + len..]].concat());
             }
-    
+
             if len != 0 {
-                skip = text[start..start+len].chars().count() - 1;
+                skip = text[start..start + len].chars().count() - 1;
                 ans += &string_to.clone();
-            }else{
+            } else {
                 ans += &ch.to_string();
             }
             start += ch.len_utf8();
         }
-    
+
         Ok(ans)
     }
 
     pub fn parse(feeder: &mut Feeder, core: &mut ShellCore) -> Result<Option<Self>, ParseError> {
-        if ! feeder.starts_with("/") {
+        if !feeder.starts_with("/") {
             return Ok(None);
         }
 
@@ -161,22 +170,23 @@ impl Replace {
         if feeder.starts_with("/") {
             ans.text += &feeder.consume(1);
             ans.all_replace = true;
-        }else if feeder.starts_with("#") {
+        } else if feeder.starts_with("#") {
             ans.text += &feeder.consume(1);
             ans.head_only_replace = true;
-        }else if feeder.starts_with("%") {
+        } else if feeder.starts_with("%") {
             ans.text += &feeder.consume(1);
             ans.tail_only_replace = true;
         }
 
-        if let Some(w) = Word::parse(feeder, core, Some(WordMode::ParamOption(vec!["}".to_string(), "/".to_string()])))? {
+        if let Some(w) = Word::parse(feeder, core, Some(WordMode::ParamOption(vec!["}".to_string(), "/".to_string()])))?
+        {
             ans.text += &w.text.clone();
             ans.replace_from = Some(w);
-        }else{
+        } else {
             ans.replace_from = Some(Word::default());
         }
 
-        if ! feeder.starts_with("/") {
+        if !feeder.starts_with("/") {
             return Ok(Some(ans));
         }
         ans.text += &feeder.consume(1);
@@ -185,7 +195,7 @@ impl Replace {
         if let Some(w) = Word::parse(feeder, core, Some(WordMode::ParamOption(vec!["}".to_string()])))? {
             ans.text += &w.text.clone();
             ans.replace_to = Some(w);
-        }else{
+        } else {
             ans.replace_to = Some(Word::default());
         }
 

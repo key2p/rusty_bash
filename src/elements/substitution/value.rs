@@ -1,12 +1,12 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{ShellCore, Feeder};
-use crate::elements::word::WordMode;
-use crate::error::parse::ParseError;
-use crate::error::exec::ExecError;
 use super::array::Array;
-use crate::elements::word::Word;
+use crate::{
+    Feeder, ShellCore,
+    elements::word::{Word, WordMode},
+    error::{exec::ExecError, parse::ParseError},
+};
 
 #[derive(Debug, Clone, Default)]
 pub enum ParsedDataType {
@@ -18,11 +18,11 @@ pub enum ParsedDataType {
 
 #[derive(Debug, Clone, Default)]
 pub struct Value {
-    pub text: String,
-    pub value: ParsedDataType,
+    pub text:             String,
+    pub value:            ParsedDataType,
     pub evaluated_string: Option<String>,
-    //pub evaluated_array: Option<HashMap<String, String>>,
-    pub evaluated_array: Option<Vec<(String, String)>>,
+    // pub evaluated_array: Option<HashMap<String, String>>,
+    pub evaluated_array:  Option<Vec<(String, String)>>,
 }
 
 impl Value {
@@ -37,21 +37,25 @@ impl Value {
         }
     }
 
-    fn eval_as_value(&mut self, w: &Word, core: &mut ShellCore, name: &str)
-    -> Result<(), ExecError> {
+    fn eval_as_value(&mut self, w: &Word, core: &mut ShellCore, name: &str) -> Result<(), ExecError> {
         self.evaluated_string = match core.db.has_flag(&name, 'i') {
-            true  => Some(w.eval_as_integer(core)?),
+            true => Some(w.eval_as_integer(core)?),
             false => Some(w.eval_as_value(core)?),
         };
 
         Ok(())
     }
 
-    fn eval_as_array(&mut self, a: &mut Array, core: &mut ShellCore,
-                     name: &str, append: bool) -> Result<(), ExecError> {
+    fn eval_as_array(
+        &mut self,
+        a: &mut Array,
+        core: &mut ShellCore,
+        name: &str,
+        append: bool,
+    ) -> Result<(), ExecError> {
         let mut i = match append {
             false => 0,
-            true  => core.db.index_based_len(&name) as isize,
+            true => core.db.index_based_len(&name) as isize,
         };
 
         let mut hash = vec![];
@@ -61,7 +65,7 @@ impl Value {
         let mut assoc_no_index_mode = false;
         let assoc = core.db.is_assoc(&name);
 
-        for (s, v) in a.eval(core, i_flag, assoc)? { 
+        for (s, v) in a.eval(core, i_flag, assoc)? {
             if assoc_no_index_mode {
                 vec_assoc.push(v);
                 continue;
@@ -71,7 +75,7 @@ impl Value {
                 if first && assoc {
                     assoc_no_index_mode = true;
                     vec_assoc.push(v);
-                }else{
+                } else {
                     hash.push((i.to_string(), v));
                 }
                 i += 1;
@@ -82,12 +86,11 @@ impl Value {
             first = false;
             let index = match s.unwrap().eval(core, &name) {
                 Ok(i) => i,
-                Err(ExecError::ArithError(a,b))
-                    => {
-                        self.evaluated_array = Some(vec![]);
-                        ExecError::ArithError(a,b).print(core);
-                        return Ok(());
-                    },
+                Err(ExecError::ArithError(a, b)) => {
+                    self.evaluated_array = Some(vec![]);
+                    ExecError::ArithError(a, b).print(core);
+                    return Ok(());
+                },
                 Err(e) => {
                     e.print(core);
                     continue;
@@ -96,7 +99,7 @@ impl Value {
 
             if assoc {
                 hash.push((index, v));
-            }else{
+            } else {
                 match index.parse::<isize>() {
                     Ok(j) => i = j,
                     Err(e) => {
@@ -112,13 +115,13 @@ impl Value {
         if assoc_no_index_mode {
             let mut key = String::new();
             for (i, d) in vec_assoc.iter().enumerate() {
-                match i%2 {
+                match i % 2 {
                     0 => key = d.clone(),
                     _ => hash.push((key.clone(), d.clone())),
                 }
             }
 
-            if vec_assoc.len()%2 == 1 {
+            if vec_assoc.len() % 2 == 1 {
                 hash.push((key.clone(), "".to_string()));
             }
         }
@@ -131,17 +134,16 @@ impl Value {
         let text = w.eval_as_value(core)?;
         let mut f = Feeder::new(&text.replace("~", "\\~"));
         if let Ok(Some(s)) = Self::parse(&mut f, core, true) {
-            if ! f.is_empty() {
+            if !f.is_empty() {
                 return Err(ExecError::InvalidName(text));
             }
-    
+
             *self = s;
         }
         Ok(())
     }
 
-    pub fn reparse(&mut self, core: &mut ShellCore) 
-    -> Result<(), ExecError> {
+    pub fn reparse(&mut self, core: &mut ShellCore) -> Result<(), ExecError> {
         let v = self.value.clone();
 
         match v {
@@ -151,19 +153,18 @@ impl Value {
         }
     }
 
-    pub fn parse(feeder: &mut Feeder, core: &mut ShellCore, permit_space: bool)
-    -> Result<Option<Self>, ParseError> {
+    pub fn parse(feeder: &mut Feeder, core: &mut ShellCore, permit_space: bool) -> Result<Option<Self>, ParseError> {
         let mut ans = Self::default();
 
         let wm = match permit_space {
-            true  => WordMode::ReparseOfValue,
+            true => WordMode::ReparseOfValue,
             false => WordMode::Value,
         };
 
         if let Some(a) = Array::parse(feeder, core)? {
             ans.text += &a.text;
             ans.value = ParsedDataType::Array(a);
-        }else if let Ok(Some(mut w)) = Word::parse(feeder, core, Some(wm)) {
+        } else if let Ok(Some(mut w)) = Word::parse(feeder, core, Some(wm)) {
             w.mode = Some(WordMode::RightOfSubstitution);
             ans.text += &w.text;
             ans.value = ParsedDataType::Single(w);

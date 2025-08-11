@@ -1,15 +1,15 @@
-//SPDXFileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDXLicense-Identifier: BSD-3-Clause
+// SPDXFileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDXLicense-Identifier: BSD-3-Clause
 
-use crate::error::exec::ExecError;
-use crate::utils::clock;
 use std::time::Duration;
+
 use super::Data;
+use crate::{error::exec::ExecError, utils::clock};
 
 #[derive(Debug, Clone)]
 pub struct Seconds {
     origin: String,
-    shift: isize,
+    shift:  isize,
 }
 
 impl Data for Seconds {
@@ -44,16 +44,17 @@ impl Data for Seconds {
         Ok(()) // TODO
     }
 
-    fn is_special(&self) -> bool {true}
-    fn is_single_num(&self) -> bool { true }
+    fn is_special(&self) -> bool {
+        true
+    }
+    fn is_single_num(&self) -> bool {
+        true
+    }
 }
 
 impl Seconds {
     pub fn new() -> Self {
         let time = clock::monotonic_time();
-        Self {
-            origin: format!("{}.{}", time.as_secs(), time.subsec_nanos()),
-            shift: 0,
-        }
+        Self { origin: format!("{}.{}", time.as_secs(), time.subsec_nanos()), shift: 0 }
     }
 }

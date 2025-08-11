@@ -1,14 +1,12 @@
-//SPDXFileCopyrightText: 2025 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDXLicense-Identifier: BSD-3-Clause
+// SPDXFileCopyrightText: 2025 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDXLicense-Identifier: BSD-3-Clause
 
-use crate::utils;
-use crate::error::exec::ExecError;
-use crate::core::DataBase;
+use crate::{core::DataBase, error::exec::ExecError, utils};
 
 impl DataBase {
     pub fn has_array_value(&mut self, name: &str, index: &str) -> bool {
         let num = self.params.len();
-        for layer in (0..num).rev()  {
+        for layer in (0..num).rev() {
             if let Some(e) = self.params[layer].get(name) {
                 let mut a = e.clone();
                 return a.get_as_array_or_assoc(index, "").is_ok();
@@ -26,7 +24,7 @@ impl DataBase {
 
     pub fn has_flag(&mut self, name: &str, flag: char) -> bool {
         let num = self.params.len();
-        for layer in (0..num).rev()  {
+        for layer in (0..num).rev() {
             if let Some(e) = self.param_options[layer].get(name) {
                 return e.contains(flag);
             }
@@ -41,7 +39,7 @@ impl DataBase {
         }
 
         let num = self.params.len();
-        for layer in (0..num).rev()  {
+        for layer in (0..num).rev() {
             if self.params[layer].get(name).is_some() {
                 return true;
             }
@@ -51,7 +49,7 @@ impl DataBase {
 
     pub fn has_key(&mut self, name: &str, key: &str) -> Result<bool, ExecError> {
         let num = self.params.len();
-        for layer in (0..num).rev()  {
+        for layer in (0..num).rev() {
             if let Some(e) = self.params[layer].get_mut(name) {
                 return Ok(e.has_key(key)?);
             }
@@ -60,7 +58,7 @@ impl DataBase {
     }
 
     pub fn name_check(name: &str) -> Result<(), ExecError> {
-        if ! utils::is_param(name) {
+        if !utils::is_param(name) {
             return Err(ExecError::VariableInvalid(name.to_string()));
         }
         Ok(())

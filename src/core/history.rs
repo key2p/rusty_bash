@@ -1,23 +1,26 @@
-//SPDXFileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDXLicense-Identifier: BSD-3-Clause
+// SPDXFileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDXLicense-Identifier: BSD-3-Clause
+
+use std::{
+    fs::{File, OpenOptions},
+    io::{BufReader, BufWriter, Write},
+};
+
+use rev_lines::RevLines;
 
 use crate::ShellCore;
-use rev_lines::RevLines;
-use std::fs::File;
-use std::io::{BufReader, BufWriter, Write};
-use std::fs::OpenOptions;
 
 impl ShellCore {
     pub fn fetch_history(&mut self, pos: usize, prev: usize, prev_str: String) -> String {
         if prev < self.history.len() {
             self.history[prev] = prev_str;
-        }else{
+        } else {
             self.rewritten_history.insert(prev + 1 - self.history.len(), prev_str);
         }
 
         if pos < self.history.len() {
             self.history[pos].clone()
-        }else{
+        } else {
             self.fetch_history_file(pos + 1 - self.history.len())
         }
     }
@@ -35,7 +38,7 @@ impl ShellCore {
             file_line %= n;
         }
 
-        if let Ok(hist_file) = File::open(self.db.get_param("HISTFILE").unwrap_or(String::new())){
+        if let Ok(hist_file) = File::open(self.db.get_param("HISTFILE").unwrap_or(String::new())) {
             let mut rev_lines = RevLines::new(BufReader::new(hist_file));
             if let Some(Ok(s)) = rev_lines.nth(file_line) {
                 return s;
@@ -46,7 +49,7 @@ impl ShellCore {
     }
 
     pub fn write_history_to_file(&mut self) {
-        if ! self.db.flags.contains('i') || self.is_subshell {
+        if !self.db.flags.contains('i') || self.is_subshell {
             return;
         }
         let filename = self.db.get_param("HISTFILE").unwrap_or(String::new());
@@ -54,16 +57,15 @@ impl ShellCore {
             eprintln!("sush: HISTFILE is not set");
             return;
         }
-    
-        let file = match OpenOptions::new().create(true)
-                .write(true).append(true).open(&filename) {
+
+        let file = match OpenOptions::new().create(true).write(true).append(true).open(&filename) {
             Ok(f) => f,
-            _     => {
+            _ => {
                 eprintln!("sush: invalid history file");
                 return;
             },
         };
-    
+
         let mut f = BufWriter::new(file);
         for h in self.history.iter().rev() {
             if h == "" {

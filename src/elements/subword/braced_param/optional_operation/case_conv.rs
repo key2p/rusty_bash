@@ -1,28 +1,31 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{Feeder, ShellCore};
-use crate::elements::word::{Word, WordMode};
-use crate::error::exec::ExecError;
-use crate::error::parse::ParseError;
-use crate::utils::glob;
-use crate::utils::glob::GlobElem;
-use super::super::Variable;
-use super::OptionalOperation;
+use super::{super::Variable, OptionalOperation};
+use crate::{
+    Feeder, ShellCore,
+    elements::word::{Word, WordMode},
+    error::{exec::ExecError, parse::ParseError},
+    utils::{glob, glob::GlobElem},
+};
 
 impl OptionalOperation for CaseConv {
-    fn get_text(&self) -> String {self.text.clone()}
+    fn get_text(&self) -> String {
+        self.text.clone()
+    }
     fn exec(&mut self, _: &Variable, text: &String, core: &mut ShellCore) -> Result<String, ExecError> {
         self.get_text(text, core)
     }
 
-    fn boxed_clone(&self) -> Box<dyn OptionalOperation> {Box::new(self.clone())}
+    fn boxed_clone(&self) -> Box<dyn OptionalOperation> {
+        Box::new(self.clone())
+    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct CaseConv {
-    pub text: String,
-    pub pattern: Option<Word>,
+    pub text:           String,
+    pub pattern:        Option<Word>,
     pub replace_symbol: String,
 }
 
@@ -50,15 +53,13 @@ impl CaseConv {
 
     fn conv(&self, ch: char) -> String {
         if 'a' <= ch && ch <= 'z' {
-            if self.replace_symbol.starts_with("^") 
-            || self.replace_symbol.starts_with("~") {
+            if self.replace_symbol.starts_with("^") || self.replace_symbol.starts_with("~") {
                 return ch.to_string().to_uppercase();
             }
         }
 
         if 'A' <= ch && ch <= 'Z' {
-            if self.replace_symbol.starts_with(",") 
-            || self.replace_symbol.starts_with("~") {
+            if self.replace_symbol.starts_with(",") || self.replace_symbol.starts_with("~") {
                 return ch.to_string().to_lowercase();
             }
         }
@@ -80,7 +81,7 @@ impl CaseConv {
                 start += ch.len_utf8();
                 continue;
             }
-    
+
             let len = self.get_match_length(&text[start..], &pattern, ch);
             if len == 0 {
                 ans += &ch.to_string();
@@ -91,7 +92,7 @@ impl CaseConv {
             let new_ch = self.conv(ch);
             ans += &new_ch;
             if self.replace_symbol.len() != 2 {
-                return Ok(ans + &text[start+len..]);
+                return Ok(ans + &text[start + len..]);
             }
 
             start += ch.len_utf8();
@@ -100,22 +101,16 @@ impl CaseConv {
     }
 
     pub fn parse(feeder: &mut Feeder, core: &mut ShellCore) -> Result<Option<Self>, ParseError> {
-        if ! feeder.starts_with("^") 
-        && ! feeder.starts_with(",") 
-        && ! feeder.starts_with("~") {
+        if !feeder.starts_with("^") && !feeder.starts_with(",") && !feeder.starts_with("~") {
             return Ok(None);
         }
 
         let mut ans = CaseConv::default();
 
-        if feeder.starts_with("^^") 
-        || feeder.starts_with(",,") 
-        || feeder.starts_with("~~") {
+        if feeder.starts_with("^^") || feeder.starts_with(",,") || feeder.starts_with("~~") {
             ans.replace_symbol = feeder.consume(2);
             ans.text += &ans.replace_symbol;
-        }else if feeder.starts_with("^") 
-        || feeder.starts_with(",") 
-        || feeder.starts_with("~") {
+        } else if feeder.starts_with("^") || feeder.starts_with(",") || feeder.starts_with("~") {
             ans.replace_symbol = feeder.consume(1);
             ans.text += &ans.replace_symbol;
         }
@@ -123,7 +118,7 @@ impl CaseConv {
         if let Some(w) = Word::parse(feeder, core, Some(WordMode::ParamOption(vec!["}".to_string()])))? {
             ans.text += &w.text.clone();
             ans.pattern = Some(w);
-        }else{
+        } else {
             ans.pattern = Some(Word::default());
         }
 

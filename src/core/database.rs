@@ -1,36 +1,30 @@
-//SPDXFileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDXLicense-Identifier: BSD-3-Clause
+// SPDXFileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDXLicense-Identifier: BSD-3-Clause
 
 mod data;
 mod database_checker;
 mod database_getter;
 mod database_setter;
 
-use crate::{env, exit};
-use crate::error::exec::ExecError;
-use crate::elements::command::function_def::FunctionDefinition;
 use std::collections::HashMap;
-use self::data::Data;
-use self::data::assoc::AssocData;
-use self::data::single::SingleData;
-use self::data::array::ArrayData;
-use self::data::array_int::IntArrayData;
-use self::data::assoc_int::IntAssocData;
-use self::data::array_uninit::UninitArray;
-use self::data::assoc_uninit::UninitAssoc;
-use self::data::single_int::IntData;
-//use self::data::special::SpecialData;
+
+use self::data::{
+    Data, array::ArrayData, array_int::IntArrayData, array_uninit::UninitArray, assoc::AssocData,
+    assoc_int::IntAssocData, assoc_uninit::UninitAssoc, single::SingleData, single_int::IntData,
+};
+use crate::{elements::command::function_def::FunctionDefinition, env, error::exec::ExecError, exit};
+// use self::data::special::SpecialData;
 
 #[derive(Debug, Default)]
 pub struct DataBase {
-    pub flags: String,
-    pub params: Vec<HashMap<String, Box<dyn Data>>>,
-    pub param_options: Vec<HashMap<String, String>>,
+    pub flags:               String,
+    pub params:              Vec<HashMap<String, Box<dyn Data>>>,
+    pub param_options:       Vec<HashMap<String, String>>,
     pub position_parameters: Vec<Vec<String>>,
-    pub functions: HashMap<String, FunctionDefinition>,
-    pub exit_status: i32,
-    pub last_arg: String,
-    pub hash_counter: HashMap<String, usize>,
+    pub functions:           HashMap<String, FunctionDefinition>,
+    pub exit_status:         i32,
+    pub last_arg:            String,
+    pub hash_counter:        HashMap<String, usize>,
 }
 
 impl DataBase {
@@ -57,7 +51,6 @@ impl DataBase {
     fn solve_layer(&mut self, name: &str) -> usize {
         self.get_layer_pos(name).unwrap_or(0)
     }
-
 
     pub fn push_local(&mut self) {
         self.params.push(HashMap::new());
@@ -117,7 +110,7 @@ impl DataBase {
     pub fn print(&mut self, name: &str) {
         if let Some(d) = self.get_ref(name) {
             d.print_with_name(name, false);
-        }else if let Some(f) = self.functions.get(name) {
+        } else if let Some(f) = self.functions.get(name) {
             println!("{}", &f.text);
         }
     }
@@ -125,13 +118,12 @@ impl DataBase {
     pub fn declare_print(&mut self, name: &str) {
         if let Some(d) = self.get_ref(name) {
             d.print_with_name(name, true);
-        }else if let Some(f) = self.functions.get(name) {
+        } else if let Some(f) = self.functions.get(name) {
             println!("{}", &f.text);
         }
     }
 
-    pub fn int_to_str_type(&mut self, name: &str, layer: usize)
-    -> Result<(), ExecError> {
+    pub fn int_to_str_type(&mut self, name: &str, layer: usize) -> Result<(), ExecError> {
         let layer_len = self.param_options.len();
         for ly in layer..layer_len {
             if let Some(opt) = self.param_options[ly].get_mut(name) {

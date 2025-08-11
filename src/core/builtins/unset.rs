@@ -1,8 +1,7 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{Feeder, ShellCore};
-use crate::elements::substitution::variable::Variable;
+use crate::{Feeder, ShellCore, elements::substitution::variable::Variable};
 
 fn unset_all(core: &mut ShellCore, name: &str) -> i32 {
     core.db.unset(name);
@@ -36,7 +35,7 @@ pub fn unset_one(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
         name => {
             let name = name.to_string();
             args.remove(1);
-            if ! name.contains("[") {
+            if !name.contains("[") {
                 return unset_all(core, &name);
             }
 

@@ -1,39 +1,37 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
-//SPDX-FileCopyrightText: 2023 @caro@mi.shellgei.org
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
+// SPDX-FileCopyrightText: 2023 @caro@mi.shellgei.org
+// SPDX-License-Identifier: BSD-3-Clause
 
 mod alias;
 mod cd;
+mod command;
 pub mod compgen;
 pub mod complete;
 mod compopt;
-mod command;
 mod echo;
 mod exec;
 mod getopts;
 mod hash;
 mod history;
 mod job_commands;
-pub mod parameter;
+mod loop_control;
 pub mod option;
+pub mod parameter;
 mod printf;
 mod pwd;
 mod read;
 pub mod source;
 mod trap;
 mod type_;
-mod loop_control;
 mod unset;
 
-use crate::{exit, Feeder, Script, ShellCore};
-use crate::elements::expr::arithmetic::ArithmeticExpr;
-use crate::error::parse::ParseError;
+use crate::{Feeder, Script, ShellCore, elements::expr::arithmetic::ArithmeticExpr, error::parse::ParseError, exit};
 
 pub fn error_exit(exit_status: i32, name: &str, msg: &str, core: &mut ShellCore) -> i32 {
     let shellname = core.db.get_param("0").unwrap();
     if core.db.flags.contains('i') {
         eprintln!("{}: {}: {}", &shellname, name, msg);
-    }else{
+    } else {
         let lineno = core.db.get_param("LINENO").unwrap_or("".to_string());
         eprintln!("{}: line {}: {}: {}", &shellname, &lineno, name, msg);
     }
@@ -106,7 +104,7 @@ pub fn eval(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
     };
     feeder.lineno += lineno - 1;
 
-    match Script::parse(&mut feeder, core, false){
+    match Script::parse(&mut feeder, core, false) {
         Ok(Some(mut s)) => {
             core.eval_level += 1;
             let _ = s.exec(core);
@@ -120,7 +118,7 @@ pub fn eval(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
             return 2;
         },
         Err(e) => e.print(core),
-        _        => {},
+        _ => {},
     }
 
     core.db.exit_status
@@ -163,14 +161,12 @@ pub fn let_(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
 
     for a in &args[1..] {
         match ArithmeticExpr::parse(&mut Feeder::new(&a.replace("$", "\\$")), core, false, "") {
-            Ok(Some(mut a)) => {
-                match a.eval(core) {
-                    Ok(s) => last_result = if s == "0" {1} else {0},
-                    Err(e) => {
-                        core.valid_assoc_expand_once = false;
-                        return error_exit(1, &args[0], &String::from(&e), core);
-                    },
-                }
+            Ok(Some(mut a)) => match a.eval(core) {
+                Ok(s) => last_result = if s == "0" { 1 } else { 0 },
+                Err(e) => {
+                    core.valid_assoc_expand_once = false;
+                    return error_exit(1, &args[0], &String::from(&e), core);
+                },
             },
             Ok(None) => {
                 core.valid_assoc_expand_once = false;
@@ -179,11 +175,10 @@ pub fn let_(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
             Err(e) => {
                 core.valid_assoc_expand_once = false;
                 return error_exit(1, &args[0], &String::from(&e), core);
-            }
+            },
         }
     }
 
     core.valid_assoc_expand_once = false;
     last_result
 }
-

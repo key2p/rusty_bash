@@ -1,11 +1,10 @@
-//SPDXFileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDXLicense-Identifier: BSD-3-Clause
+// SPDXFileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDXLicense-Identifier: BSD-3-Clause
 
-use crate::error::exec::ExecError;
 use std::collections::HashMap;
-use super::Data;
-use super::array_uninit::UninitArray;
-use super::array::ArrayData;
+
+use super::{Data, array::ArrayData, array_uninit::UninitArray};
+use crate::error::exec::ExecError;
 
 #[derive(Debug, Clone, Default)]
 pub struct IntArrayData {
@@ -13,13 +12,15 @@ pub struct IntArrayData {
 }
 
 impl Data for IntArrayData {
-    fn boxed_clone(&self) -> Box<dyn Data> { Box::new(self.clone()) }
+    fn boxed_clone(&self) -> Box<dyn Data> {
+        Box::new(self.clone())
+    }
 
     fn print_body(&self) -> String {
         let mut formatted = "(".to_string();
         for i in self.keys() {
             formatted += &format!("[{}]=\"{}\" ", i, &self.body[&i]);
-        };
+        }
         if formatted.ends_with(" ") {
             formatted.pop();
         }
@@ -27,8 +28,12 @@ impl Data for IntArrayData {
         formatted
     }
 
-    fn clear(&mut self) { self.body.clear(); }
-    fn is_initialized(&self) -> bool { true }
+    fn clear(&mut self) {
+        self.body.clear();
+    }
+    fn is_initialized(&self) -> bool {
+        true
+    }
 
     fn has_key(&mut self, key: &str) -> Result<bool, ExecError> {
         if key == "@" || key == "*" {
@@ -52,7 +57,7 @@ impl Data for IntArrayData {
 
         if let Some(v) = self.body.get(&0) {
             self.body.insert(0, v + n);
-        }else {
+        } else {
             self.body.insert(0, n);
         }
         Ok(())
@@ -65,19 +70,18 @@ impl Data for IntArrayData {
         Ok(())
     }
 
-    /*
-    fn push_elems(&mut self, values: Vec<String>) -> Result<(), ExecError> {
-        let mut index = match self.body.is_empty() {
-            true  => 0,
-            false => *self.keys().iter().max().unwrap(),
-        };
-
-        for v in values {
-            self.body.insert(index, v);
-            index += 1;
-        }
-        Ok(())
-    }*/
+    // fn push_elems(&mut self, values: Vec<String>) -> Result<(), ExecError> {
+    // let mut index = match self.body.is_empty() {
+    // true  => 0,
+    // false => *self.keys().iter().max().unwrap(),
+    // };
+    //
+    // for v in values {
+    // self.body.insert(index, v);
+    // index += 1;
+    // }
+    // Ok(())
+    // }
 
     fn append_to_array_elem(&mut self, key: &str, value: &str) -> Result<(), ExecError> {
         let key = self.to_index(key)?;
@@ -85,7 +89,7 @@ impl Data for IntArrayData {
 
         if let Some(prev) = self.body.get(&key) {
             self.body.insert(key, prev + n);
-        }else{
+        } else {
             self.body.insert(key, n);
         }
         Ok(())
@@ -99,25 +103,24 @@ impl Data for IntArrayData {
             return Ok(self.values().join(ifs));
         }
 
-        let n = key.parse::<usize>()
-                   .map_err(|_| ExecError::ArrayIndexInvalid(key.to_string()))?;
+        let n = key.parse::<usize>().map_err(|_| ExecError::ArrayIndexInvalid(key.to_string()))?;
 
-        Ok( self.body.get(&n).unwrap_or(&0).to_string() )
+        Ok(self.body.get(&n).unwrap_or(&0).to_string())
     }
 
     fn get_all_as_array(&mut self, skip_none: bool) -> Result<Vec<String>, ExecError> {
         if self.body.is_empty() {
             return Ok(vec![]);
         }
-        
+
         let keys = self.keys();
         let max = *keys.iter().max().unwrap() as usize;
         let mut ans = vec![];
-        for i in 0..(max+1) {
+        for i in 0..(max + 1) {
             match self.body.get(&i) {
                 Some(s) => ans.push(s.to_string()),
                 None => {
-                    if ! skip_none {
+                    if !skip_none {
                         ans.push("".to_string());
                     }
                 },
@@ -134,11 +137,11 @@ impl Data for IntArrayData {
         let keys = self.keys();
         let max = *keys.iter().max().unwrap() as usize;
         let mut ans = vec![];
-        for i in pos..(max+1) {
+        for i in pos..(max + 1) {
             match self.body.get(&i) {
                 Some(s) => ans.push(s.to_string()),
                 None => {
-                    if ! skip_non {
+                    if !skip_non {
                         ans.push("".to_string());
                     }
                 },
@@ -164,8 +167,12 @@ impl Data for IntArrayData {
         Box::new(ArrayData::from(hash))
     }
 
-    fn is_array(&self) -> bool {true}
-    fn len(&mut self) -> usize { self.body.len() }
+    fn is_array(&self) -> bool {
+        true
+    }
+    fn len(&mut self) -> usize {
+        self.body.len()
+    }
 
     fn elem_len(&mut self, key: &str) -> Result<usize, ExecError> {
         if key == "@" || key == "*" {
@@ -193,38 +200,41 @@ impl Data for IntArrayData {
 }
 
 impl IntArrayData {
-    pub fn set_elem(db_layer: &mut HashMap<String, Box<dyn Data>>,
-                        name: &str, pos: isize, val: &String) -> Result<(), ExecError> {
+    pub fn set_elem(
+        db_layer: &mut HashMap<String, Box<dyn Data>>,
+        name: &str,
+        pos: isize,
+        val: &String,
+    ) -> Result<(), ExecError> {
         if let Some(d) = db_layer.get_mut(name) {
             if d.is_array() {
-                if ! d.is_initialized() {
+                if !d.is_initialized() {
                     *d = IntArrayData::default().boxed_clone();
                 }
-                
+
                 return d.set_as_array(&pos.to_string(), val);
-            }else if d.is_assoc() {
+            } else if d.is_assoc() {
                 return d.set_as_assoc(&pos.to_string(), val);
-            }else if d.is_single() {
+            } else if d.is_single() {
                 let data = d.get_as_single()?;
                 IntArrayData::set_new_entry(db_layer, name)?;
-                
+
                 if data != "" {
                     Self::set_elem(db_layer, name, 0, &data)?;
                 }
                 Self::set_elem(db_layer, name, pos, val)
-            }else {
+            } else {
                 IntArrayData::set_new_entry(db_layer, name)?;
                 Self::set_elem(db_layer, name, pos, val)
             }
-        }else{
+        } else {
             IntArrayData::set_new_entry(db_layer, name)?;
             Self::set_elem(db_layer, name, pos, val)
         }
     }
 
-    pub fn set_new_entry(db_layer: &mut HashMap<String, Box<dyn Data>>, name: &str)
-    -> Result<(), ExecError> {
-        db_layer.insert(name.to_string(), UninitArray{}.boxed_clone());
+    pub fn set_new_entry(db_layer: &mut HashMap<String, Box<dyn Data>>, name: &str) -> Result<(), ExecError> {
+        db_layer.insert(name.to_string(), UninitArray {}.boxed_clone());
         Ok(())
     }
 
@@ -261,6 +271,6 @@ impl IntArrayData {
             return Err(ExecError::ArrayIndexInvalid(key.to_string()));
         }
 
-        Ok(index  as usize)
+        Ok(index as usize)
     }
 }

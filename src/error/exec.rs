@@ -1,13 +1,14 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::ShellCore;
-use crate::error::arith::ArithError;
-use crate::error::parse::ParseError;
-use nix::errno::Errno;
-use nix::sys::wait::WaitStatus;
-use std::num::ParseIntError;
-use std::os::fd::RawFd;
+use std::{num::ParseIntError, os::fd::RawFd};
+
+use nix::{errno::Errno, sys::wait::WaitStatus};
+
+use crate::{
+    ShellCore,
+    error::{arith::ArithError, parse::ParseError},
+};
 
 #[derive(Debug, Clone)]
 pub enum ExecError {
@@ -76,7 +77,7 @@ impl From<&ExecError> for String {
             ExecError::BadSubstitution(s) => format!("`{}': bad substitution", s),
             ExecError::BadFd(fd) => format!("{}: bad file descriptor", fd),
             ExecError::CannotOverwriteExistingFile(file) => format!("{}: cannot overwrite existing file", file),
-            //ExecError::InvalidName(name) => format!("`{}': invalid name", name),
+            // ExecError::InvalidName(name) => format!("`{}': invalid name", name),
             ExecError::InvalidName(name) => format!("`{}': not a valid identifier", name),
             ExecError::InvalidOption(opt) => format!("{}: invalid option", opt),
             ExecError::Interrupted => "interrupted".to_string(),
@@ -85,7 +86,7 @@ impl From<&ExecError> for String {
             ExecError::VariableInvalid(name) => format!("`{}': not a valid identifier", name),
             ExecError::ParseIntError(e) => e.to_string(),
             ExecError::SyntaxError(near) => format!("syntax error near unexpected token `{}'", &near),
-            ExecError::Restricted(com) => format!("{}: restricted", com), 
+            ExecError::Restricted(com) => format!("{}: restricted", com),
             ExecError::SubstringMinus(n) => format!("{}: substring expression < 0", n),
             ExecError::UnsupportedWaitStatus(ws) => format!("Unsupported wait status: {:?}", ws),
             ExecError::UnboundVariable(name) => format!("{}: unbound variable", name),
@@ -93,7 +94,7 @@ impl From<&ExecError> for String {
             ExecError::Bug(msg) => format!("INTERNAL BUG: {}", msg),
             ExecError::Other(name) => name.to_string(),
 
-            ExecError::ArithError(s, a) =>  format!("{}: {}", s, String::from(a)),
+            ExecError::ArithError(s, a) => format!("{}: {}", s, String::from(a)),
             ExecError::ParseError(p) => From::from(p),
         }
     }
@@ -105,7 +106,7 @@ impl ExecError {
         let s: String = From::<&ExecError>::from(self);
         if core.db.flags.contains('i') {
             eprintln!("{}: {}", &name, &s);
-        }else{
+        } else {
             let lineno = core.db.get_param("LINENO").unwrap_or("".to_string());
             eprintln!("{}: line {}: {}", &name, &lineno, s);
         }

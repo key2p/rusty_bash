@@ -1,9 +1,8 @@
-//SPDXFileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDXLicense-Identifier: BSD-3-Clause
+// SPDXFileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDXLicense-Identifier: BSD-3-Clause
 
-use crate::utils;
-use crate::error::exec::ExecError;
 use super::Data;
+use crate::{error::exec::ExecError, utils};
 
 #[derive(Debug, Clone)]
 pub struct SingleData {
@@ -17,22 +16,21 @@ impl From<&str> for SingleData {
 }
 
 impl Data for SingleData {
-    fn boxed_clone(&self) -> Box<dyn Data> { Box::new(self.clone()) }
-    fn print_body(&self) -> String { 
+    fn boxed_clone(&self) -> Box<dyn Data> {
+        Box::new(self.clone())
+    }
+    fn print_body(&self) -> String {
         let mut s = self.body.replace("'", "\\'");
-        if s.contains('~') 
-        || s.starts_with('#') {
+        if s.contains('~') || s.starts_with('#') {
             s = "'".to_owned() + &s + "'";
         }
         let ansi = utils::to_ansi_c(&s);
-        if ansi == s {
-            ansi.replace("$", "\\$")
-        }else{
-            ansi
-        }
+        if ansi == s { ansi.replace("$", "\\$") } else { ansi }
     }
 
-    fn clear(&mut self) { self.body.clear(); }
+    fn clear(&mut self) {
+        self.body.clear();
+    }
 
     fn set_as_single(&mut self, value: &str) -> Result<(), ExecError> {
         self.body = value.to_string();
@@ -44,9 +42,15 @@ impl Data for SingleData {
         Ok(())
     }
 
-    fn get_as_single(&mut self) -> Result<String, ExecError> { Ok(self.body.to_string()) }
-    fn len(&mut self) -> usize { self.body.chars().count() }
-    fn is_single(&self) -> bool {true}
+    fn get_as_single(&mut self) -> Result<String, ExecError> {
+        Ok(self.body.to_string())
+    }
+    fn len(&mut self) -> usize {
+        self.body.chars().count()
+    }
+    fn is_single(&self) -> bool {
+        true
+    }
 
     fn has_key(&mut self, key: &str) -> Result<bool, ExecError> {
         if key == "@" || key == "*" {

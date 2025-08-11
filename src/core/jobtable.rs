@@ -1,32 +1,33 @@
-//SPDX-FileCopyrightText: 2023 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2023 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::ShellCore;
-use crate::error::exec::ExecError;
-use nix::unistd;
-use nix::unistd::Pid;
-use nix::sys::signal;
-use nix::sys::wait;
-use nix::sys::wait::{WaitPidFlag, WaitStatus};
+use nix::{
+    sys::{
+        signal, wait,
+        wait::{WaitPidFlag, WaitStatus},
+    },
+    unistd,
+    unistd::Pid,
+};
+
+use crate::{ShellCore, error::exec::ExecError};
 
 #[derive(Debug, Default)]
 pub struct JobEntry {
-    pub id: usize,
-    pub pids: Vec<Pid>,
-    proc_statuses: Vec<WaitStatus>,
+    pub id:             usize,
+    pub pids:           Vec<Pid>,
+    proc_statuses:      Vec<WaitStatus>,
     pub display_status: String,
-    pub text: String,
-    change: bool,
-    pub no_control: bool,
+    pub text:           String,
+    change:             bool,
+    pub no_control:     bool,
 }
 
 fn wait_nonblock(pid: &Pid, status: &mut WaitStatus) -> Result<(), ExecError> {
-    let waitflags = WaitPidFlag::WNOHANG 
-                  | WaitPidFlag::WUNTRACED
-                  | WaitPidFlag::WCONTINUED;
+    let waitflags = WaitPidFlag::WNOHANG | WaitPidFlag::WUNTRACED | WaitPidFlag::WCONTINUED;
 
     let s = wait::waitpid(*pid, Some(waitflags))?;
-    if s != WaitStatus::StillAlive || ! still(status) {
+    if s != WaitStatus::StillAlive || !still(status) {
         *status = s;
     }
     Ok(())
@@ -36,7 +37,7 @@ fn wait_block(pid: &Pid, status: &mut WaitStatus) -> Result<i32, ExecError> {
     *status = wait::waitpid(*pid, Some(WaitPidFlag::WUNTRACED))?;
     let exit_status = match status {
         WaitStatus::Exited(_, es) => *es,
-        WaitStatus::Stopped(_, _) => 148,
+        WaitStatus::Stopped(..) => 148,
         WaitStatus::Signaled(_, sig, _) => *sig as i32 + 128,
         _ => 1,
     };
@@ -46,18 +47,17 @@ fn wait_block(pid: &Pid, status: &mut WaitStatus) -> Result<i32, ExecError> {
 
 fn still(status: &WaitStatus) -> bool {
     match &status {
-        WaitStatus::StillAlive    => true,
-        WaitStatus::Stopped(_, _) => true,
+        WaitStatus::StillAlive => true,
+        WaitStatus::Stopped(..) => true,
         WaitStatus::Continued(__) => true,
         _ => false,
     }
 }
 
 impl JobEntry {
-    pub fn new(pids: Vec<Option<Pid>>, statuses: &Vec<WaitStatus>,
-               text: &str, status: &str, id: usize) -> JobEntry {
+    pub fn new(pids: Vec<Option<Pid>>, statuses: &Vec<WaitStatus>, text: &str, status: &str, id: usize) -> JobEntry {
         JobEntry {
-            id: id,
+            id,
             pids: pids.into_iter().flatten().collect(),
             proc_statuses: statuses.to_vec(),
             display_status: status.to_string(),
@@ -72,18 +72,20 @@ impl JobEntry {
         for (status, pid) in self.proc_statuses.iter_mut().zip(&self.pids) {
             if still(status) {
                 match wait {
-                    true  => exit_status = wait_block(pid, status)?,
-                    false => {wait_nonblock(pid, status)?;},
+                    true => exit_status = wait_block(pid, status)?,
+                    false => {
+                        wait_nonblock(pid, status)?;
+                    },
                 }
             }
         }
         self.change |= before != self.proc_statuses[0];
 
-        /* check stopped processes */
+        // check stopped processes
         let mut stopped = false;
         for s in &self.proc_statuses {
             match s {
-                WaitStatus::Stopped(_, _) => {
+                WaitStatus::Stopped(..) => {
                     stopped = true;
                     break;
                 },
@@ -102,7 +104,7 @@ impl JobEntry {
             return Ok(148);
         }
 
-        if ! stopped && self.display_status == "Stopped" || self.change {
+        if !stopped && self.display_status == "Stopped" || self.change {
             self.change_display_status(self.proc_statuses[0]);
         }
 
@@ -113,16 +115,18 @@ impl JobEntry {
         println!("{}", self.pids[0]);
     }
 
-    pub fn print(&self, priority: &Vec<usize>, l_opt: bool, r_opt: bool, s_opt: bool, add_amp: bool) 
-    -> bool {
-        if r_opt && self.display_status != "Running"
-        || s_opt && self.display_status != "Stopped" {
+    pub fn print(&self, priority: &Vec<usize>, l_opt: bool, r_opt: bool, s_opt: bool, add_amp: bool) -> bool {
+        if r_opt && self.display_status != "Running" || s_opt && self.display_status != "Stopped" {
             return false;
         }
 
-        let symbol = if priority[0] == self.id {"+"}
-                     else if priority.len() > 1 && priority[1] == self.id {"-"}
-                     else {" "};
+        let symbol = if priority[0] == self.id {
+            "+"
+        } else if priority.len() > 1 && priority[1] == self.id {
+            "-"
+        } else {
+            " "
+        };
 
         let pid = match l_opt {
             true => &self.pids[0].to_string(),
@@ -133,14 +137,11 @@ impl JobEntry {
         let text = tmp.trim_end();
 
         if self.display_status == "Stopped" {
-            println!("[{}]{} {} {}                 {}", self.id, &symbol, &pid, 
-                &self.display_status, &text);
-        }else if add_amp && self.display_status != "Done" {
-            println!("[{}]{} {} {}                 {} &", self.id, &symbol, &pid, 
-                &self.display_status, &text);
-        }else{
-            println!("[{}]{} {} {}                    {}", self.id, &symbol, &pid, 
-                &self.display_status, &text);
+            println!("[{}]{} {} {}                 {}", self.id, &symbol, &pid, &self.display_status, &text);
+        } else if add_amp && self.display_status != "Done" {
+            println!("[{}]{} {} {}                 {} &", self.id, &symbol, &pid, &self.display_status, &text);
+        } else {
+            println!("[{}]{} {} {}                    {}", self.id, &symbol, &pid, &self.display_status, &text);
         }
 
         self.display_status == "Done" || self.display_status == "Killed"
@@ -148,33 +149,33 @@ impl JobEntry {
 
     fn display_status_on_signal(signal: &signal::Signal, coredump: bool) -> String {
         let coredump_msg = match coredump {
-            true  => "    (core dumped)",
+            true => "    (core dumped)",
             false => "",
         };
 
         let msg = match signal {
-            signal::SIGHUP    => "Hangup",
-            signal::SIGINT    => "Interrupt",
-            signal::SIGQUIT   => "Quit",
-            signal::SIGILL    => "Illeagal instruction",
-            signal::SIGTRAP   => "Trace/breakpoint trap",
-            signal::SIGABRT   => "Aborted",
-            signal::SIGBUS    => "Bus error",
-            signal::SIGFPE    => "Floating point exception",
-            signal::SIGKILL   => "Killed",
-            signal::SIGUSR1   => "User defined signal 1",
-            signal::SIGSEGV   => "Segmentation fault",
-            signal::SIGUSR2   => "User defined signal 2",
-            signal::SIGPIPE   => "Broken pipe",
-            signal::SIGALRM   => "Alarm clock",
-            signal::SIGTERM   => "Terminated",
-          //  signal::SIGSTKFLT => "Stack fault",           not in macOS
-            signal::SIGXCPU   => "CPU time limit exceeded",
-            signal::SIGXFSZ   => "File size limit exceeded",
+            signal::SIGHUP => "Hangup",
+            signal::SIGINT => "Interrupt",
+            signal::SIGQUIT => "Quit",
+            signal::SIGILL => "Illeagal instruction",
+            signal::SIGTRAP => "Trace/breakpoint trap",
+            signal::SIGABRT => "Aborted",
+            signal::SIGBUS => "Bus error",
+            signal::SIGFPE => "Floating point exception",
+            signal::SIGKILL => "Killed",
+            signal::SIGUSR1 => "User defined signal 1",
+            signal::SIGSEGV => "Segmentation fault",
+            signal::SIGUSR2 => "User defined signal 2",
+            signal::SIGPIPE => "Broken pipe",
+            signal::SIGALRM => "Alarm clock",
+            signal::SIGTERM => "Terminated",
+            //  signal::SIGSTKFLT => "Stack fault",           not in macOS
+            signal::SIGXCPU => "CPU time limit exceeded",
+            signal::SIGXFSZ => "File size limit exceeded",
             signal::SIGVTALRM => "Virtual timer expired",
-            signal::SIGPROF   => "Profiling timer expired",
-          //  signal::SIGPWR    => "Power failure",         not in macOS
-            signal::SIGSYS    => "Bad system call",
+            signal::SIGPROF => "Profiling timer expired",
+            //  signal::SIGPWR    => "Power failure",         not in macOS
+            signal::SIGSYS => "Bad system call",
             _ => "",
         };
 
@@ -183,26 +184,25 @@ impl JobEntry {
 
     fn change_display_status(&mut self, after: WaitStatus) {
         self.display_status = match after {
-            WaitStatus::Exited(_, _)                  => "Done".to_string(),
-            WaitStatus::Stopped(_, _)                 => "Stopped".to_string(),
-            WaitStatus::Continued(_)                  => "Running".to_string(),
-            WaitStatus::Signaled(_, signal, coredump) =>
-                Self::display_status_on_signal(&signal, coredump),
+            WaitStatus::Exited(..) => "Done".to_string(),
+            WaitStatus::Stopped(..) => "Stopped".to_string(),
+            WaitStatus::Continued(_) => "Running".to_string(),
+            WaitStatus::Signaled(_, signal, coredump) => Self::display_status_on_signal(&signal, coredump),
             _ => return,
         }
     }
 
     pub fn send_cont(&mut self) {
         for pid in &self.pids {
-            let _ = signal::kill(Pid::from_raw(-1 * i32::from(*pid)), signal::SIGCONT);            
+            let _ = signal::kill(Pid::from_raw(-1 * i32::from(*pid)), signal::SIGCONT);
         }
     }
 
     pub fn solve_pgid(&self) -> Pid {
         for pid in &self.pids {
             match unistd::getpgid(Some(*pid)) {
-                Ok(pgid) => return pgid, 
-                _ => {}, 
+                Ok(pgid) => return pgid,
+                _ => {},
             }
         }
         Pid::from_raw(0)
@@ -246,12 +246,12 @@ impl ShellCore {
         self.job_table.retain(|e| still(&e.proc_statuses[0]) || e.display_status == "Stopped");
 
         let ids = self.job_table.iter().map(|j| j.id).collect::<Vec<usize>>();
-        self.job_table_priority.retain(|id| ids.contains(id) );
+        self.job_table_priority.retain(|id| ids.contains(id));
     }
 
     pub fn generate_new_job_id(&self) -> usize {
         match self.job_table.last() {
-            None      => 1,
+            None => 1,
             Some(job) => job.id + 1,
         }
     }

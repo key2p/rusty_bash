@@ -1,11 +1,11 @@
-//SPDX-FileCopyrightText: 2025 Ryuichi Ueda <ryuichiueda@gmail.com>
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2025 Ryuichi Ueda <ryuichiueda@gmail.com>
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{ShellCore, Feeder};
-use crate::error::parse::ParseError;
-use crate::elements::subword::escaped_char::EscapedChar;
-use crate::elements::subword::simple::SimpleSubword;
-use crate::elements::subword::Subword;
+use crate::{
+    Feeder, ShellCore,
+    elements::subword::{Subword, escaped_char::EscapedChar, simple::SimpleSubword},
+    error::parse::ParseError,
+};
 
 #[derive(Clone, Debug)]
 pub enum AnsiCToken {
@@ -23,7 +23,7 @@ impl AnsiCToken {
     pub fn to_string(&mut self) -> String {
         match &self {
             AnsiCToken::EmptyHex => String::new(),
-            AnsiCToken::Normal(s) => s.clone(), 
+            AnsiCToken::Normal(s) => s.clone(),
             AnsiCToken::Oct(s) => {
                 let mut num = u32::from_str_radix(&s, 8).unwrap();
                 if num >= 256 {
@@ -33,13 +33,13 @@ impl AnsiCToken {
                 if num >= 128 {
                     num += 0xE000;
                     char::from_u32(num).unwrap().to_string()
-                }else{
+                } else {
                     char::from(num as u8).to_string()
                 }
             },
             AnsiCToken::Hex(s) => {
                 let hex = match s.len() > 2 {
-                    true  => s[s.len()-2..].to_string(),
+                    true => s[s.len() - 2..].to_string(),
                     false => s.to_string(),
                 };
 
@@ -54,7 +54,7 @@ impl AnsiCToken {
                 if num >= 128 {
                     num += 0xE000;
                     char::from_u32(num).unwrap().to_string()
-                }else{
+                } else {
                     char::from(num as u8).to_string()
                 }
             },
@@ -69,31 +69,44 @@ impl AnsiCToken {
                 let num = u64::from_str_radix(&s, 16).unwrap();
                 let mut ans = String::new();
                 for i in (0..4).rev() {
-                    let n = (((num >> i*8) & 0xFF) + 0xE000 + ((i+1) << 8)) as u32;
-                    ans.push( char::from_u32(n).unwrap() );
+                    let n = (((num >> i * 8) & 0xFF) + 0xE000 + ((i + 1) << 8)) as u32;
+                    ans.push(char::from_u32(n).unwrap());
                 }
-                //unsafe { char::from_u32_unchecked(num as u32) }.to_string()
+                // unsafe { char::from_u32_unchecked(num as u32) }.to_string()
                 ans
             },
             AnsiCToken::Control(c) => {
-                let num = if *c == '@' { 0 }
-                    else if *c == '[' { 27 }
-                    else if *c == '\\' { 28 }
-                    else if *c == ']' { 29 }
-                    else if *c == '^' { 30 }
-                    else if *c == '_' { 31 }
-                    else if *c == '?' { 127 }
-                    else if '0' <= *c && *c <= '9' { *c as u32 - 32 }
-                    else if 'a' <= *c && *c <= 'z' { *c as u32 - 96 }
-                    else if 'A' <= *c && *c <= 'Z' { *c as u32 - 64 }
-                    else if *c as u32 >= 32 { *c as u32 - 32 }
-                    else{ *c as u32 };
+                let num = if *c == '@' {
+                    0
+                } else if *c == '[' {
+                    27
+                } else if *c == '\\' {
+                    28
+                } else if *c == ']' {
+                    29
+                } else if *c == '^' {
+                    30
+                } else if *c == '_' {
+                    31
+                } else if *c == '?' {
+                    127
+                } else if '0' <= *c && *c <= '9' {
+                    *c as u32 - 32
+                } else if 'a' <= *c && *c <= 'z' {
+                    *c as u32 - 96
+                } else if 'A' <= *c && *c <= 'Z' {
+                    *c as u32 - 64
+                } else if *c as u32 >= 32 {
+                    *c as u32 - 32
+                } else {
+                    *c as u32
+                };
 
                 char::from_u32(num).unwrap().to_string()
             },
             AnsiCToken::OtherEscaped(s) => match s.as_ref() {
                 "a" => char::from(7).to_string(),
-                "b" =>  char::from(8).to_string(),
+                "b" => char::from(8).to_string(),
                 "e" | "E" => char::from(27).to_string(),
                 "f" => char::from(12).to_string(),
                 "n" => "\n".to_string(),
@@ -104,14 +117,14 @@ impl AnsiCToken {
                 "'" => "'".to_string(),
                 "\"" => "\"".to_string(),
                 _ => ("\\".to_owned() + s).to_string(),
-            }
+            },
         }
     }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct AnsiCString {
-    pub text: String,
+    pub text:   String,
     pub tokens: Vec<AnsiCToken>,
 }
 
@@ -132,7 +145,7 @@ impl AnsiCString {
             ans.text += a.get_text();
             ans.tokens.push(AnsiCToken::Normal(a.get_text().to_string()));
             true
-        }else{
+        } else {
             false
         }
     }
@@ -149,12 +162,12 @@ impl AnsiCString {
 
         let token = feeder.consume(len);
         ans.text += &token.clone();
-        ans.tokens.push( AnsiCToken::Oct(token[1..].to_string()));
+        ans.tokens.push(AnsiCToken::Oct(token[1..].to_string()));
         true
     }
 
     fn eat_hex_braced(feeder: &mut Feeder, ans: &mut Self, core: &mut ShellCore) -> bool {
-        if ! feeder.starts_with("\\x{") {
+        if !feeder.starts_with("\\x{") {
             return false;
         }
 
@@ -172,7 +185,7 @@ impl AnsiCString {
         if len < 4 {
             if feeder.len() > len {
                 len += 1;
-            }else{
+            } else {
                 return false;
             }
         }
@@ -183,13 +196,12 @@ impl AnsiCString {
         token.retain(|c| c != '}');
         let ln = token.len();
         if ln == 2 {
-        }else if ln == 3 {
-            ans.tokens.push( AnsiCToken::Hex(token[ln-1..ln].to_string()));
-        }else{
-            ans.tokens.push( AnsiCToken::Hex(token[ln-2..ln].to_string()));
+        } else if ln == 3 {
+            ans.tokens.push(AnsiCToken::Hex(token[ln - 1..ln].to_string()));
+        } else {
+            ans.tokens.push(AnsiCToken::Hex(token[ln - 2..ln].to_string()));
         }
         true
-
     }
 
     fn eat_hex(feeder: &mut Feeder, ans: &mut Self, core: &mut ShellCore) -> bool {
@@ -204,7 +216,7 @@ impl AnsiCString {
 
         let token = feeder.consume(len);
         ans.text += &token.clone();
-        ans.tokens.push( AnsiCToken::Hex(token[2..].to_string()));
+        ans.tokens.push(AnsiCToken::Hex(token[2..].to_string()));
         true
     }
 
@@ -220,7 +232,7 @@ impl AnsiCString {
 
         let token = feeder.consume(len);
         ans.text += &token.clone();
-        ans.tokens.push( AnsiCToken::Unicode4(token[2..].to_string()));
+        ans.tokens.push(AnsiCToken::Unicode4(token[2..].to_string()));
         true
     }
 
@@ -236,57 +248,56 @@ impl AnsiCString {
 
         let token = feeder.consume(len);
         ans.text += &token.clone();
-        ans.tokens.push( AnsiCToken::Unicode8(token[2..].to_string()));
+        ans.tokens.push(AnsiCToken::Unicode8(token[2..].to_string()));
         true
     }
 
-    fn eat_escaped_char(feeder: &mut Feeder, ans: &mut Self,
-                        core: &mut ShellCore, for_echo: bool) -> bool {
+    fn eat_escaped_char(feeder: &mut Feeder, ans: &mut Self, core: &mut ShellCore, for_echo: bool) -> bool {
         if let Some(a) = EscapedChar::parse(feeder, core) {
             let txt = a.get_text().to_string();
             ans.text += &txt.clone();
 
             if for_echo && txt == "\\'" {
                 ans.tokens.push(AnsiCToken::Normal(txt));
-            }else if txt != "\\c" || feeder.len() == 0 {
+            } else if txt != "\\c" || feeder.len() == 0 {
                 ans.tokens.push(AnsiCToken::OtherEscaped(txt[1..].to_string()));
-            }else{
+            } else {
                 if let Some(a) = EscapedChar::parse(feeder, core) {
                     let mut text_after = a.get_text().to_string();
                     ans.text += &text_after.clone();
                     text_after.remove(0);
                     let ctrl_c = text_after.chars().nth(0).unwrap();
                     ans.tokens.push(AnsiCToken::Control(ctrl_c));
-                }else if feeder.starts_with("'") {
+                } else if feeder.starts_with("'") {
                     ans.tokens.push(AnsiCToken::Normal("\\c".to_string()));
-                }else{
+                } else {
                     let ctrl_c = feeder.consume(1).chars().nth(0).unwrap();
                     ans.text += &ctrl_c.to_string();
                     ans.tokens.push(AnsiCToken::Control(ctrl_c));
                 }
             }
             true
-        }else{
+        } else {
             false
         }
     }
 
-    pub fn parse(feeder: &mut Feeder, core: &mut ShellCore, for_echo: bool)
-    -> Result<Option<Self>, ParseError> {
+    pub fn parse(feeder: &mut Feeder, core: &mut ShellCore, for_echo: bool) -> Result<Option<Self>, ParseError> {
         let mut ans = Self::default();
 
         loop {
-            if ! for_echo && feeder.starts_with("'") {
+            if !for_echo && feeder.starts_with("'") {
                 break;
             }
 
-            if Self::eat_simple_subword(feeder, &mut ans) 
-            || Self::eat_hex_braced(feeder, &mut ans, core)
-            || Self::eat_hex(feeder, &mut ans, core)
-            || Self::eat_oct(feeder, &mut ans, core)
-            || Self::eat_unicode4(feeder, &mut ans, core)
-            || Self::eat_unicode8(feeder, &mut ans, core)
-            || Self::eat_escaped_char(feeder, &mut ans, core, for_echo) {
+            if Self::eat_simple_subword(feeder, &mut ans)
+                || Self::eat_hex_braced(feeder, &mut ans, core)
+                || Self::eat_hex(feeder, &mut ans, core)
+                || Self::eat_oct(feeder, &mut ans, core)
+                || Self::eat_unicode4(feeder, &mut ans, core)
+                || Self::eat_unicode8(feeder, &mut ans, core)
+                || Self::eat_escaped_char(feeder, &mut ans, core, for_echo)
+            {
                 continue;
             }
 
@@ -297,7 +308,7 @@ impl AnsiCString {
                 feeder.feed_additional_line(core)?;
                 continue;
             }
-        
+
             let other = feeder.consume(1);
             ans.text += &other.clone();
             ans.tokens.push(AnsiCToken::Normal(other));

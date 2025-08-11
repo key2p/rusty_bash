@@ -1,5 +1,5 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
+// SPDX-License-Identifier: BSD-3-Clause
 
 use crate::ShellCore;
 
@@ -12,8 +12,8 @@ pub fn return_(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
 
     if args.len() < 2 {
         return 0;
-    }else if let Ok(n) = args[1].parse::<i32>() {
-        return n%256;
+    } else if let Ok(n) = args[1].parse::<i32>() {
+        return n % 256;
     }
 
     eprintln!("sush: return: {}: numeric argument required", args[1]);
@@ -32,10 +32,10 @@ pub fn break_(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
     }
 
     match args[1].parse::<i32>() {
-        Ok(n)  => {
+        Ok(n) => {
             if n > 0 {
                 core.break_counter += n - 1;
-            }else{
+            } else {
                 eprintln!("sush: break: {}: loop count out of range", args[1]);
                 return 1;
             }
@@ -60,10 +60,10 @@ pub fn continue_(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
     }
 
     match args[1].parse::<i32>() {
-        Ok(n)  => {
+        Ok(n) => {
             if n > 0 {
                 core.continue_counter += n - 1;
-            }else{
+            } else {
                 eprintln!("sush: continue: {}: loop count out of range", args[1]);
                 return 1;
             }

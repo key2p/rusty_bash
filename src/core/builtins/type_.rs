@@ -1,9 +1,11 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
-//SPDX-FileCopyrightText: 2023 @caro@mi.shellgei.org
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
+// SPDX-FileCopyrightText: 2023 @caro@mi.shellgei.org
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{file_check, ShellCore, utils};
-use crate::utils::{arg, file};
+use crate::{
+    ShellCore, file_check, utils,
+    utils::{arg, file},
+};
 
 fn type_no_opt_sub(core: &mut ShellCore, com: &String) -> i32 {
     if core.aliases.contains_key(com) {
@@ -37,7 +39,7 @@ fn type_no_opt_sub(core: &mut ShellCore, com: &String) -> i32 {
 fn type_no_opt(core: &mut ShellCore, args: &[String]) -> i32 {
     let mut exit_status = 0;
     for a in args {
-         exit_status += type_no_opt_sub(core, a);
+        exit_status += type_no_opt_sub(core, a);
     }
     if exit_status > 1 {
         exit_status = 1;
@@ -48,7 +50,7 @@ fn type_no_opt(core: &mut ShellCore, args: &[String]) -> i32 {
 fn type_t(core: &mut ShellCore, args: &[String]) -> i32 {
     let mut exit_status = 0;
     for a in args {
-         exit_status += type_t_sub(core, a);
+        exit_status += type_t_sub(core, a);
     }
     if exit_status > 1 {
         exit_status = 1;
@@ -73,8 +75,7 @@ fn type_t_sub(core: &mut ShellCore, com: &String) -> i32 {
         println!("builtin");
         return 0;
     }
-    if file::search_command(com).is_some()
-    || file_check::is_executable(com) {
+    if file::search_command(com).is_some() || file_check::is_executable(com) {
         println!("file");
         return 0;
     }
@@ -85,7 +86,7 @@ fn type_t_sub(core: &mut ShellCore, com: &String) -> i32 {
 fn type_p(core: &mut ShellCore, args: &[String]) -> i32 {
     let mut exit_status = 0;
     for a in args {
-         exit_status += type_p_sub(core, a);
+        exit_status += type_p_sub(core, a);
     }
     if exit_status > 1 {
         exit_status = 1;
@@ -96,7 +97,7 @@ fn type_p(core: &mut ShellCore, args: &[String]) -> i32 {
 fn type_large_p(core: &mut ShellCore, args: &[String]) -> i32 {
     let mut exit_status = 0;
     for a in args {
-         exit_status += type_large_p_sub(core, a);
+        exit_status += type_large_p_sub(core, a);
     }
     if exit_status > 1 {
         exit_status = 1;
@@ -105,10 +106,11 @@ fn type_large_p(core: &mut ShellCore, args: &[String]) -> i32 {
 }
 
 fn type_p_sub(core: &mut ShellCore, com: &String) -> i32 {
-    if core.aliases.contains_key(com) 
-    || core.db.functions.contains_key(com)
-    || utils::reserved(com)
-    || core.builtins.contains_key(com) {
+    if core.aliases.contains_key(com)
+        || core.db.functions.contains_key(com)
+        || utils::reserved(com)
+        || core.builtins.contains_key(com)
+    {
         return 0;
     }
 
@@ -125,10 +127,11 @@ fn type_p_sub(core: &mut ShellCore, com: &String) -> i32 {
 
 fn type_large_p_sub(core: &mut ShellCore, com: &String) -> i32 {
     let mut es = 1;
-    if core.aliases.contains_key(com) 
-    || core.db.functions.contains_key(com)
-    || utils::reserved(com)
-    || core.builtins.contains_key(com) {
+    if core.aliases.contains_key(com)
+        || core.db.functions.contains_key(com)
+        || utils::reserved(com)
+        || core.builtins.contains_key(com)
+    {
         es = 0;
     }
 

@@ -1,21 +1,29 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDX-License-Identifier: BSD-3-Clause
 
 pub mod elem;
 mod parser;
 
-use crate::{Feeder, ShellCore, utils};
-use crate::elements::expr::arithmetic::elem::{int, float};
-use crate::elements::expr::arithmetic::ArithmeticExpr;
-use crate::error::arith::ArithError;
-use crate::error::exec::ExecError;
-use crate::utils::{file_check, glob};
-use crate::elements::word::Word;
-use crate::elements::substitution::variable::Variable;
+use std::env;
+
 use regex::Regex;
+
 use self::elem::CondElem;
 use super::arithmetic::elem::ArithElem;
-use std::env;
+use crate::{
+    Feeder, ShellCore,
+    elements::{
+        expr::arithmetic::{
+            ArithmeticExpr,
+            elem::{float, int},
+        },
+        substitution::variable::Variable,
+        word::Word,
+    },
+    error::{arith::ArithError, exec::ExecError},
+    utils,
+    utils::{file_check, glob},
+};
 
 fn to_operand(w: &mut Word) -> Result<CondElem, ExecError> {
     match w.make_unquoted_word() {
@@ -58,9 +66,7 @@ impl ConditionalExpr {
         }
 
         if core.db.flags.contains('x') {
-            let mut elems = cp.elements.clone()
-                           .into_iter().map(|e| e.to_string())
-                           .collect::<Vec<String>>();
+            let mut elems = cp.elements.clone().into_iter().map(|e| e.to_string()).collect::<Vec<String>>();
             elems.pop();
             eprintln!("{} ]]\r", &elems.join(" "));
         }
@@ -75,48 +81,49 @@ impl ConditionalExpr {
 
                     next = match (&cp.elements[i], &last) {
                         (CondElem::And, CondElem::Ans(ans)) => *ans,
-                        (CondElem::Or, CondElem::Ans(ans))  => !ans,
+                        (CondElem::Or, CondElem::Ans(ans)) => !ans,
                         _ => return Err(ExecError::Other("Internal error conditional.rs:55".to_string())),
                     };
                 },
                 _ => {},
             }
         }
- 
+
         Ok(last)
     }
 
     fn calculate(elems: &[CondElem], core: &mut ShellCore) -> Result<CondElem, ExecError> {
         let rev_pol = Self::rev_polish(elems)?;
         let mut stack = Self::reduce(&rev_pol, core)?;
-    
+
         match pop_operand(&mut stack, core, false) {
-            Ok(CondElem::Operand(s))  => Ok(CondElem::Ans(s.len() > 0)), //for [[ string ]]
-            other_ans             => other_ans,
+            Ok(CondElem::Operand(s)) => Ok(CondElem::Ans(s.len() > 0)), // for [[ string ]]
+            other_ans => other_ans,
         }
     }
 
     fn rev_polish(elems: &[CondElem]) -> Result<Vec<CondElem>, ExecError> {
         let mut ans = vec![];
         let mut stack = vec![];
-    
+
         for e in elems {
             let ok = match e {
-                CondElem::Word(_) 
-                | CondElem::InParen(_) 
-                | CondElem::Regex(_) => {ans.push(e.clone()); true},
-                op               => Self::rev_polish_op(&op, &mut stack, &mut ans),
+                CondElem::Word(_) | CondElem::InParen(_) | CondElem::Regex(_) => {
+                    ans.push(e.clone());
+                    true
+                },
+                op => Self::rev_polish_op(&op, &mut stack, &mut ans),
             };
-    
+
             if !ok {
                 return Err(ExecError::SyntaxError(e.to_string()));
             }
         }
-    
+
         while stack.len() > 0 {
             ans.push(stack.pop().unwrap());
         }
-    
+
         Ok(ans)
     }
 
@@ -124,7 +131,7 @@ impl ConditionalExpr {
         let mut stack = vec![];
 
         for e in rev_pol {
-            let result = match e { 
+            let result = match e {
                 CondElem::Word(_) | CondElem::Regex(_) | CondElem::InParen(_) => {
                     stack.push(e.clone());
                     Ok(())
@@ -136,7 +143,7 @@ impl ConditionalExpr {
                     }
                     if op == "=~" {
                         Self::regex_operation(&mut stack, core)
-                    }else{
+                    } else {
                         Self::bin_operation(&op, &mut stack, core)
                     }
                 },
@@ -151,17 +158,17 @@ impl ConditionalExpr {
                     },
                     _ => Err(ExecError::Other("no operand to negate".to_string())),
                 },
-               // _ => Err(ExecError::Other( error::syntax("TODO"))),
+                // _ => Err(ExecError::Other( error::syntax("TODO"))),
                 _ => Err(ArithError::OperandExpected("TODO".to_string()).into()),
             };
-    
+
             if let Err(err_msg) = result {
                 core.db.exit_status = 2;
                 return Err(err_msg);
             }
         }
 
-        if stack.len() != 1 { 
+        if stack.len() != 1 {
             let mut err = "syntax error".to_string();
             if stack.len() > 1 {
                 err = format!("syntax error in conditional expression: unexpected token `{}'", &stack[0].to_string());
@@ -169,15 +176,15 @@ impl ConditionalExpr {
                 err = format!("syntax error near `{}'", &stack[0].to_string());
             }
             return Err(ExecError::Other(err));
-        }   
+        }
 
         Ok(stack)
     }
 
     fn unary_operation(op: &str, stack: &mut Vec<CondElem>, core: &mut ShellCore) -> Result<(), ExecError> {
         let operand = match pop_operand(stack, core, false) {
-            Ok(CondElem::Operand(v))  => v,
-            Ok(_)  => return Err(ExecError::Other("unknown operand".to_string())), 
+            Ok(CondElem::Operand(v)) => v,
+            Ok(_) => return Err(ExecError::Other("unknown operand".to_string())),
             Err(e) => return Err(e),
         };
 
@@ -187,21 +194,17 @@ impl ConditionalExpr {
                 "-v" => {
                     if env::var(&operand).is_ok() {
                         true
-                    }else {
+                    } else {
                         let mut f = Feeder::new(&operand);
-                        if let Some(v) = Variable::parse(&mut f, core)? {
-                            v.exist(core)?
-                        } else {
-                            false
-                        }
+                        if let Some(v) = Variable::parse(&mut f, core)? { v.exist(core)? } else { false }
                     }
                 },
                 "-z" => operand.is_empty(),
                 "-n" => operand.len() > 0,
-                _    => false,
+                _ => false,
             };
 
-            stack.push( CondElem::Ans(ans) );
+            stack.push(CondElem::Ans(ans));
             return Ok(());
         }
 
@@ -210,20 +213,20 @@ impl ConditionalExpr {
 
     fn regex_operation(stack: &mut Vec<CondElem>, core: &mut ShellCore) -> Result<(), ExecError> {
         let right = match pop_operand(stack, core, false) {
-            Ok(CondElem::Regex(right)) => right, 
-            Ok(_)  => return Err(ExecError::Other("Invalid operand".to_string())),
+            Ok(CondElem::Regex(right)) => right,
+            Ok(_) => return Err(ExecError::Other("Invalid operand".to_string())),
             Err(e) => return Err(e),
         };
 
         let left = match pop_operand(stack, core, false) {
             Ok(CondElem::Operand(name)) => name,
-            Ok(_)  => return Err(ExecError::Other("Invalid operand".to_string())),
+            Ok(_) => return Err(ExecError::Other("Invalid operand".to_string())),
             Err(e) => return Err(e),
         };
 
         let right_eval = match right.eval_for_regex(core) {
             Some(r) => r,
-            None  => return Err(ExecError::Other("Invalid operand".to_string())),
+            None => return Err(ExecError::Other("Invalid operand".to_string())),
         };
 
         let re = match Regex::new(&right_eval) {
@@ -237,13 +240,13 @@ impl ConditionalExpr {
                 if let Some(e) = res.get(i) {
                     let s = e.as_str().to_string();
                     core.db.set_array_elem("BASH_REMATCH", &s, i as isize, None)?;
-                }else{
+                } else {
                     break;
                 }
             }
-            stack.push( CondElem::Ans(true) );
-        }else{
-            stack.push( CondElem::Ans(false) );
+            stack.push(CondElem::Ans(true));
+        } else {
+            stack.push(CondElem::Ans(false));
         }
 
         return Ok(());
@@ -253,13 +256,13 @@ impl ConditionalExpr {
         let mut f = Feeder::new(&name);
         let mut parsed = match ArithmeticExpr::parse(&mut f, core, false, "") {
             Ok(Some(p)) => p,
-            _    => return Err(ArithError::OperandExpected(name.to_string())),
+            _ => return Err(ArithError::OperandExpected(name.to_string())),
         };
 
         if let Ok(eval) = parsed.eval(core) {
             return Self::single_str_to_num(&eval, core);
         }
-    
+
         Err(ArithError::OperandExpected(name.to_string()))
     }
 
@@ -268,26 +271,25 @@ impl ConditionalExpr {
             let f = float::parse(&name)?;
             return Ok(ArithElem::Float(f));
         }
-    
+
         if utils::is_name(&name, core) {
-            return Ok( ArithElem::Integer(0) );
+            return Ok(ArithElem::Integer(0));
         }
-    
+
         let n = int::parse(&name)?;
-        Ok( ArithElem::Integer(n) )
+        Ok(ArithElem::Integer(n))
     }
 
-    fn bin_operation(op: &str, stack: &mut Vec<CondElem>,
-                     core: &mut ShellCore) -> Result<(), ExecError> {
+    fn bin_operation(op: &str, stack: &mut Vec<CondElem>, core: &mut ShellCore) -> Result<(), ExecError> {
         let right = match pop_operand(stack, core, true) {
             Ok(CondElem::Operand(name)) => name,
-            Ok(_)  => return Err(ExecError::Other("Invalid operand".to_string())),
+            Ok(_) => return Err(ExecError::Other("Invalid operand".to_string())),
             Err(e) => return Err(e),
         };
-    
+
         let left = match pop_operand(stack, core, false) {
             Ok(CondElem::Operand(name)) => name,
-            Ok(_)  => return Err(ExecError::Other("Invalid operand".to_string())),
+            Ok(_) => return Err(ExecError::Other("Invalid operand".to_string())),
             Err(e) => return Err(e),
         };
 
@@ -295,13 +297,13 @@ impl ConditionalExpr {
         if op.starts_with("=") || op == "!=" || op == "<" || op == ">" {
             let ans = match op {
                 "==" | "=" => glob::parse_and_compare(&left, &right, extglob),
-                "!="       => ! glob::parse_and_compare(&left, &right, extglob),
-                ">"        => left > right,
-                "<"        => left < right,
-                _    => false,
+                "!=" => !glob::parse_and_compare(&left, &right, extglob),
+                ">" => left > right,
+                "<" => left < right,
+                _ => false,
             };
 
-            stack.push( CondElem::Ans(ans) );
+            stack.push(CondElem::Ans(ans));
             return Ok(());
         }
 
@@ -322,39 +324,39 @@ impl ConditionalExpr {
                 "-le" => lnum <= rnum,
                 "-gt" => lnum > rnum,
                 "-ge" => lnum >= rnum,
-                _    => false,
+                _ => false,
             };
 
-            stack.push( CondElem::Ans(ans) );
+            stack.push(CondElem::Ans(ans));
             return Ok(());
         }
 
         let result = file_check::metadata_comp(&left, &right, op);
-        stack.push( CondElem::Ans(result) );
+        stack.push(CondElem::Ans(result));
         Ok(())
     }
 
     fn unary_file_check(op: &str, s: &String, stack: &mut Vec<CondElem>) -> Result<(), ExecError> {
         let result = match op {
-            "-a" | "-e"  => file_check::exists(s),
-            "-d"  => file_check::is_dir(s),
-            "-f"  => file_check::is_regular_file(s),
-            "-h" | "-L"  => file_check::is_symlink(s),
-            "-r"  => file_check::is_readable(s),
-            "-t"  => file_check::is_tty(s),
-            "-w"  => file_check::is_writable(s),
-            "-x"  => file_check::is_executable(s),
-            "-b" | "-c" | "-g" | "-k" | "-p" | "-s" | "-u" | "-G" | "-N" | "-O" | "-S"
-                  => file_check::metadata_check(s, op),
-            _  => return Err(ExecError::Other("unsupported option".to_string())),
+            "-a" | "-e" => file_check::exists(s),
+            "-d" => file_check::is_dir(s),
+            "-f" => file_check::is_regular_file(s),
+            "-h" | "-L" => file_check::is_symlink(s),
+            "-r" => file_check::is_readable(s),
+            "-t" => file_check::is_tty(s),
+            "-w" => file_check::is_writable(s),
+            "-x" => file_check::is_executable(s),
+            "-b" | "-c" | "-g" | "-k" | "-p" | "-s" | "-u" | "-G" | "-N" | "-O" | "-S" => {
+                file_check::metadata_check(s, op)
+            },
+            _ => return Err(ExecError::Other("unsupported option".to_string())),
         };
 
-        stack.push( CondElem::Ans(result) );
+        stack.push(CondElem::Ans(result));
         Ok(())
     }
 
-    fn rev_polish_op(elem: &CondElem,
-                     stack: &mut Vec<CondElem>, ans: &mut Vec<CondElem>) -> bool {
+    fn rev_polish_op(elem: &CondElem, stack: &mut Vec<CondElem>, ans: &mut Vec<CondElem>) -> bool {
         loop {
             match stack.last() {
                 None => {
@@ -371,7 +373,7 @@ impl ConditionalExpr {
                 },
             }
         }
-    
+
         true
     }
 }

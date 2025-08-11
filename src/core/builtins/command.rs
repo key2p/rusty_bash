@@ -1,17 +1,19 @@
-//SPDX-FileCopyrightText: 2025 Ryuichi Ueda <ryuichiueda@gmail.com>
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2025 Ryuichi Ueda <ryuichiueda@gmail.com>
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{error, proc_ctrl, ShellCore};
-use crate::elements::command::simple::SimpleCommand;
-use crate::elements::io::pipe::Pipe;
-use crate::utils::{arg, file};
+use crate::{
+    ShellCore,
+    elements::{command::simple::SimpleCommand, io::pipe::Pipe},
+    error, proc_ctrl,
+    utils::{arg, file},
+};
 
 pub fn builtin(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
     if args.len() <= 1 {
         return 0;
     }
 
-    if ! core.builtins.contains_key(&args[1]) {
+    if !core.builtins.contains_key(&args[1]) {
         let msg = format!("{}: not a shell builtin", &args[1]);
         return super::error_exit(1, &args[0], &msg, core);
     }
@@ -29,23 +31,23 @@ fn command_v(words: &mut Vec<String>, core: &mut ShellCore, large_v: bool) -> i3
     for com in words.iter() {
         if core.aliases.contains_key(com) {
             match large_v {
-                true  => println!("{} is aliased to `{}'", &com, core.aliases[com]),
+                true => println!("{} is aliased to `{}'", &com, core.aliases[com]),
                 false => println!("alias {}='{}'", &com, &core.aliases[com]),
             }
-        }else if core.builtins.contains_key(com) {
+        } else if core.builtins.contains_key(com) {
             return_value = 0;
 
             match large_v {
-                true  => println!("{} is a shell builtin", &com),
+                true => println!("{} is a shell builtin", &com),
                 false => println!("{}", &com),
             }
-        }else if let Some(path) = file::search_command(&com) {
+        } else if let Some(path) = file::search_command(&com) {
             return_value = 0;
             match large_v {
-                true  => println!("{} is {}", &com, &path),
+                true => println!("{} is {}", &com, &path),
                 false => println!("{}", &com),
             }
-        }else if large_v {
+        } else if large_v {
             let msg = format!("command: {}: not found", com);
             error::print(&msg, core);
         }
@@ -69,7 +71,7 @@ pub fn command(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
     let mut pos = 1;
     while args.len() > pos {
         match args[pos].starts_with("-") {
-            true  => pos += 1,
+            true => pos += 1,
             false => break,
         }
     }
@@ -85,7 +87,7 @@ pub fn command(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
     let last_option = args.last().unwrap();
     if last_option == "-V" || last_option == "-v" {
         return command_v(&mut words, core, last_option == "-V");
-    }else if core.builtins.contains_key(&words[0]) {
+    } else if core.builtins.contains_key(&words[0]) {
         return core.builtins[&words[0]](core, &mut words);
     }
 

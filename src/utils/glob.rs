@@ -1,5 +1,5 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
+// SPDX-License-Identifier: BSD-3-Clause
 
 mod comparator;
 mod extglob;
@@ -30,13 +30,11 @@ pub fn compare(word: &String, pattern: &Vec<GlobElem>) -> bool {
 }
 
 pub fn longest_match_length(word: &String, pattern: &Vec<GlobElem>) -> usize {
-    word.len() - comparator::shave_word(word, pattern).iter()
-                 .map(|c| c.len()).min().unwrap_or(word.len())
+    word.len() - comparator::shave_word(word, pattern).iter().map(|c| c.len()).min().unwrap_or(word.len())
 }
 
 pub fn shortest_match_length(word: &String, pattern: &Vec<GlobElem>) -> usize {
-    word.len() - comparator::shave_word(word, pattern).iter()
-                 .map(|c| c.len()).max().unwrap_or(word.len())
+    word.len() - comparator::shave_word(word, pattern).iter().map(|c| c.len()).max().unwrap_or(word.len())
 }
 
 pub fn parse(pattern: &str, extglob: bool) -> Vec<GlobElem> {

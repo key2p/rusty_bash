@@ -1,8 +1,7 @@
-//SPDX-FileCopyrightText: 2025 Ryuichi Ueda <ryuichiueda@gmail.com>
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2025 Ryuichi Ueda <ryuichiueda@gmail.com>
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::ShellCore;
-use crate::utils::arg;
+use crate::{ShellCore, utils::arg};
 
 fn print_all(core: &mut ShellCore) -> i32 {
     println!("hits	command");

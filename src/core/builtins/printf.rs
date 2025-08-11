@@ -1,11 +1,14 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{error, Feeder, ShellCore};
-use crate::error::arith::ArithError;
-use crate::error::exec::ExecError;
-use crate::elements::substitution::Substitution;
-use std::io::{stdout, Write};
+use std::io::{Write, stdout};
+
+use crate::{
+    Feeder, ShellCore,
+    elements::substitution::Substitution,
+    error,
+    error::{arith::ArithError, exec::ExecError},
+};
 
 #[derive(Debug, Clone)]
 enum PrintfToken {
@@ -45,7 +48,7 @@ impl PrintfToken {
         }
     }
 
-    //TODO: implement!
+    // TODO: implement!
     fn padding_float(_: &mut String, fmt: &mut String) {
         if fmt.is_empty() {
             return;
@@ -68,7 +71,7 @@ impl PrintfToken {
             padding = fmt.remove(0);
         }
 
-        if ! is_int {
+        if !is_int {
             padding = ' ';
         }
 
@@ -108,7 +111,7 @@ impl PrintfToken {
                     let mut a = num.to_string();
                     Self::padding(&mut a, &mut fmt.clone(), true);
                     Ok(a)
-                }else{
+                } else {
                     Self::padding(&mut a, &mut fmt.clone(), true);
                     Ok(a)
                 }
@@ -145,11 +148,19 @@ impl PrintfToken {
             },
             Self::Q => {
                 let a = pop(args);
-                let q = a.replace("\\", "\\\\").replace("$", "\\$").replace("|", "\\|")
-                    .replace("\"", "\\\"").replace("'", "\\\'").replace("~", "\\~")
-                    .replace("(", "\\(").replace(")", "\\)")
-                    .replace("{", "\\{").replace("}", "\\}")
-                    .replace("!", "\\!").replace("&", "\\&");
+                let q = a
+                    .replace("\\", "\\\\")
+                    .replace("$", "\\$")
+                    .replace("|", "\\|")
+                    .replace("\"", "\\\"")
+                    .replace("'", "\\\'")
+                    .replace("~", "\\~")
+                    .replace("(", "\\(")
+                    .replace(")", "\\)")
+                    .replace("{", "\\{")
+                    .replace("}", "\\}")
+                    .replace("!", "\\!")
+                    .replace("&", "\\&");
                 Ok(q)
             },
             Self::Other(s) => {
@@ -172,7 +183,7 @@ impl PrintfToken {
 
 fn pop(args: &mut Vec<String>) -> String {
     match args.is_empty() {
-        true  => "".to_string(),
+        true => "".to_string(),
         false => args.remove(0),
     }
 }
@@ -180,7 +191,7 @@ fn pop(args: &mut Vec<String>) -> String {
 fn esc_to_str(ch: char) -> String {
     match ch {
         'a' => char::from(7).to_string(),
-        'b' =>  char::from(8).to_string(),
+        'b' => char::from(8).to_string(),
         'e' | 'E' => char::from(27).to_string(),
         'f' => char::from(12).to_string(),
         'n' => "\n".to_string(),
@@ -203,7 +214,7 @@ fn replace_escape(s: &str) -> String {
             if esc {
                 ans.push_str(&esc_to_str(ch));
             }
-            esc = ! esc;
+            esc = !esc;
             continue;
         }
 
@@ -226,7 +237,7 @@ fn scanner_normal(remaining: &str) -> usize {
 }
 
 fn scanner_escaped_char(remaining: &str) -> usize {
-    if ! remaining.starts_with("\\") {
+    if !remaining.starts_with("\\") {
         return 0;
     }
 
@@ -239,7 +250,7 @@ fn scanner_escaped_char(remaining: &str) -> usize {
 fn scanner_format_num(remaining: &str) -> usize {
     let mut ans = 0;
     for c in remaining.chars() {
-        if ! "-.".contains(c) && (c < '0' || c > '9') {
+        if !"-.".contains(c) && (c < '0' || c > '9') {
             break;
         }
 
@@ -252,7 +263,7 @@ fn parse(pattern: &str) -> Vec<PrintfToken> {
     let mut remaining = pattern.to_string();
     let mut ans = vec![];
 
-    while ! remaining.is_empty() {
+    while !remaining.is_empty() {
         let len = scanner_normal(&remaining);
         if len > 0 {
             let tail = remaining.split_off(len);
@@ -270,7 +281,7 @@ fn parse(pattern: &str) -> Vec<PrintfToken> {
 
         if remaining.starts_with("%") {
             remaining.remove(0); // %
-                               
+
             let mut num_part = String::new();
             let len = scanner_format_num(&remaining);
             if len > 0 {
@@ -290,8 +301,8 @@ fn parse(pattern: &str) -> Vec<PrintfToken> {
                 Some('x') => PrintfToken::X(num_part),
                 Some('X') => PrintfToken::LargeX(num_part),
                 Some('q') => PrintfToken::Q,
-                Some(c)   => PrintfToken::Other("%".to_owned() + &num_part + &c.to_string()),
-                None      => PrintfToken::Normal("%".to_string()),
+                Some(c) => PrintfToken::Other("%".to_owned() + &num_part + &c.to_string()),
+                None => PrintfToken::Normal("%".to_string()),
             };
 
             remaining.remove(0);
@@ -315,7 +326,7 @@ fn format(pattern: &str, args: &mut Vec<String>) -> Result<String, ExecError> {
         ans += &tok.to_string(args)?;
     }
 
-    if ! args.is_empty() && ! fin {
+    if !args.is_empty() && !fin {
         if let Ok(s) = format(pattern, args) {
             ans += &s;
         }
@@ -324,8 +335,7 @@ fn format(pattern: &str, args: &mut Vec<String>) -> Result<String, ExecError> {
 }
 
 fn arg_check(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
-    if args.len() < 2 || args[1] == "--help"
-    || args[1] == "-v" && args.len() == 3 {
+    if args.len() < 2 || args[1] == "--help" || args[1] == "-v" && args.len() == 3 {
         let msg = format!("printf: usage: printf [-v var] format [arguments]");
         error::print(&msg, core);
         return 2;
@@ -362,7 +372,7 @@ fn printf_v(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
                 let msg = String::from(&e);
                 return super::error_exit(2, "printf", &msg, core);
             }
-        }else{
+        } else {
             return 1;
         }
         return 0;

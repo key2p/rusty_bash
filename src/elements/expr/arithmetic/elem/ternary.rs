@@ -1,15 +1,18 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::ShellCore;
-use crate::error::arith::ArithError;
-use crate::error::exec::ExecError;
-use super::super::{ArithmeticExpr, ArithElem};
-use super::super::calculator;
+use super::super::{ArithElem, ArithmeticExpr, calculator};
+use crate::{
+    ShellCore,
+    error::{arith::ArithError, exec::ExecError},
+};
 
-pub fn operation(left: &Option<ArithmeticExpr>, right: &Option<ArithmeticExpr>,
-    stack: &mut Vec<ArithElem>, core: &mut ShellCore) -> Result<(), ExecError> {
-
+pub fn operation(
+    left: &Option<ArithmeticExpr>,
+    right: &Option<ArithmeticExpr>,
+    stack: &mut Vec<ArithElem>,
+    core: &mut ShellCore,
+) -> Result<(), ExecError> {
     if left.is_none() {
         return Err(ArithError::ExpressionExpected(":".to_string()).into());
     }
@@ -36,6 +39,6 @@ pub fn operation(left: &Option<ArithmeticExpr>, right: &Option<ArithmeticExpr>,
         _ => left.eval_in_cond(core)?,
     };
 
-    stack.push( ans );
+    stack.push(ans);
     Ok(())
 }

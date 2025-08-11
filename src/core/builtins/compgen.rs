@@ -1,18 +1,22 @@
-//SPDX-FileCopyrightText: 2023 Ryuichi Ueda <ryuichiueda@gmail.com>
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2023 Ryuichi Ueda <ryuichiueda@gmail.com>
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{file_check, ShellCore, Feeder};
-use crate::elements::word::{Word, WordMode};
-use crate::elements::word::{path_expansion, tilde_expansion};
-use crate::utils;
-use crate::utils::{arg, directory, glob};
-use faccess;
-use faccess::PathExt;
-use std::collections::HashSet;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::{
+    collections::HashSet,
+    fs::File,
+    io::{BufRead, BufReader},
+    path::Path,
+};
+
+use faccess::{self, PathExt};
 use rev_lines::RevLines;
+
+use crate::{
+    Feeder, ShellCore,
+    elements::word::{Word, WordMode, path_expansion, tilde_expansion},
+    file_check, utils,
+    utils::{arg, directory, glob},
+};
 
 pub fn compgen_f(core: &mut ShellCore, args: &mut Vec<String>, dir_only: bool) -> Vec<String> {
     if args.len() > 2 && args[2] == "--" {
@@ -22,12 +26,13 @@ pub fn compgen_f(core: &mut ShellCore, args: &mut Vec<String>, dir_only: bool) -
     let path = match args.len() {
         2 => "".to_string(),
         _ => args[2].to_string(),
-    }.replace("\\", "");
+    }
+    .replace("\\", "");
 
     let mut split: Vec<String> = path.split("/").map(|s| s.to_string()).collect();
     let key = match split.pop() {
-        Some(g) => g, 
-        _       => return vec![],
+        Some(g) => g,
+        _ => return vec![],
     };
 
     split.push("".to_string());
@@ -55,12 +60,16 @@ pub fn compgen_f(core: &mut ShellCore, args: &mut Vec<String>, dir_only: bool) -
         ans.append(&mut directory::glob(&dir, ".", &core.shopts));
         ans.append(&mut directory::glob(&dir, "..", &core.shopts));
     }
-    ans.iter_mut().for_each(|a| { a.pop(); } );
+    ans.iter_mut().for_each(|a| {
+        a.pop();
+    });
     if dir_only {
         ans.retain(|p| file_check::is_dir(&p));
     }
     ans.sort();
-    ans.iter_mut().for_each(|e| {*e = e.replacen(&dir, &org_dir, 1); });
+    ans.iter_mut().for_each(|e| {
+        *e = e.replacen(&dir, &org_dir, 1);
+    });
     ans
 }
 
@@ -90,18 +99,18 @@ fn replace_args_compgen(args: &mut Vec<String>) -> bool {
 }
 
 fn command_list(target: &String, core: &mut ShellCore) -> Vec<String> {
-
     let mut comlist = HashSet::new();
     for path in core.db.get_param("PATH").unwrap_or(String::new()).to_string().split(":") {
-        /* /mnt is ellimimated from PATH on WSL because it contains all files in Windows.*/
-        if utils::is_wsl() && path.starts_with("/mnt") { 
-            if ! path.ends_with("WINDOWS") { // We want to use explorer.exe
-                continue;    
+        // /mnt is ellimimated from PATH on WSL because it contains all files in Windows.
+        if utils::is_wsl() && path.starts_with("/mnt") {
+            if !path.ends_with("WINDOWS") {
+                // We want to use explorer.exe
+                continue;
             }
         }
 
         for command in directory::files(path).iter() {
-            if ! Path::new(&(path.to_owned() + "/" + command)).executable() {
+            if !Path::new(&(path.to_owned() + "/" + command)).executable() {
                 continue;
             }
 
@@ -121,7 +130,7 @@ pub fn compgen(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
         return 1;
     }
     let mut args = arg::dissolve_options(args);
-    let exclude  = arg::consume_with_next_arg("-X", &mut args); //TODO: implement X pattern
+    let exclude = arg::consume_with_next_arg("-X", &mut args); //TODO: implement X pattern
     let prefix = arg::consume_with_next_arg("-P", &mut args);
     let suffix = arg::consume_with_next_arg("-S", &mut args);
 
@@ -133,7 +142,7 @@ pub fn compgen(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
         "-c" => compgen_c(core, &mut args),
         "-d" => compgen_d(core, &mut args),
         "-f" => compgen_f(core, &mut args, false),
-        "-h" => compgen_h(core, &mut args), //history (sush original)
+        "-h" => compgen_h(core, &mut args), // history (sush original)
         "-j" => compgen_j(core, &mut args),
         "-o" => compgen_o(core, &mut args),
         "-u" => compgen_u(core, &mut args),
@@ -164,7 +173,7 @@ pub fn compgen(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
 
     if let Some(pattern) = exclude {
         let extglob = core.shopts.query("extglob");
-        ans.retain(|a| ! glob::parse_and_compare(&a, &pattern, extglob));
+        ans.retain(|a| !glob::parse_and_compare(&a, &pattern, extglob));
     }
 
     if let Some(p) = prefix {
@@ -180,7 +189,7 @@ pub fn compgen(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
 
     ans.iter().for_each(|a| println!("{}", &a));
     match ans.is_empty() {
-        true  => 1,
+        true => 1,
         false => 0,
     }
 }
@@ -188,9 +197,9 @@ pub fn compgen(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
 fn get_head(args: &mut Vec<String>, pos: usize) -> String {
     if args.len() > pos && args[pos] != "--" {
         args[pos].clone()
-    }else if args.len() > pos+1 {
-        args[pos+1].clone()
-    }else{
+    } else if args.len() > pos + 1 {
+        args[pos + 1].clone()
+    } else {
         "".to_string()
     }
 }
@@ -262,11 +271,11 @@ pub fn compgen_h(core: &mut ShellCore, _: &mut Vec<String>) -> Vec<String> {
 
     let mut ans = core.history.to_vec();
 
-    if let Ok(hist_file) = File::open(core.db.get_param("HISTFILE").unwrap_or(String::new())){
+    if let Ok(hist_file) = File::open(core.db.get_param("HISTFILE").unwrap_or(String::new())) {
         for h in RevLines::new(BufReader::new(hist_file)) {
             match h {
                 Ok(s) => ans.push(s),
-                _     => {},
+                _ => {},
             }
 
             if ans.len() >= 10 {
@@ -330,7 +339,7 @@ fn compgen_large_w(core: &mut ShellCore, args: &mut Vec<String>) -> Vec<String> 
     while feeder.len() != 0 {
         match Word::parse(&mut feeder, core, None) {
             Ok(Some(mut w)) => {
-                if let Ok(mut v) =  w.eval(core) {
+                if let Ok(mut v) = w.eval(core) {
                     ans.append(&mut v);
                 }
             },
@@ -377,7 +386,7 @@ pub fn compgen_function(core: &mut ShellCore, args: &mut Vec<String>) -> Vec<Str
 }
 
 pub fn compgen_hostname(_: &mut ShellCore, _: &mut Vec<String>) -> Vec<String> {
-    //TODO: Implement!
+    // TODO: Implement!
     vec![]
 }
 

@@ -1,40 +1,45 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDX-License-Identifier: BSD-3-Clause
 
 mod core;
+mod elements;
 mod error;
 mod feeder;
-mod elements;
 mod main_c_option;
-mod signal;
 mod proc_ctrl;
+mod signal;
 mod utils;
 
+use std::{env, process, sync::atomic::Ordering::Relaxed};
+
 use builtins::option;
-use std::{env, process};
-use std::sync::atomic::Ordering::Relaxed;
-use crate::core::{builtins, ShellCore};
-use crate::elements::script::Script;
-use crate::feeder::Feeder;
-use utils::{exit, file_check, arg};
 use error::input::InputError;
-use crate::core::builtins::source;
+use utils::{arg, exit, file_check};
+
+use crate::{
+    core::{ShellCore, builtins, builtins::source},
+    elements::script::Script,
+    feeder::Feeder,
+};
 
 fn show_version() {
     const V: &'static str = env!("CARGO_PKG_VERSION");
     const P: &'static str = env!("CARGO_BUILD_PROFILE");
-    eprintln!("Rusty Bash (a.k.a. Sushi shell), version {} - {}
+    eprintln!(
+        "Rusty Bash (a.k.a. Sushi shell), version {} - {}
 © 2024 Ryuichi Ueda
 License: BSD 3-Clause
 
 This is open source software. You can redistirbute and use in source
 and binary forms with or without modification under the license.
-There is no warranty, to the extent permitted by law.", V, P);
+There is no warranty, to the extent permitted by law.",
+        V, P
+    );
     process::exit(0);
 }
 
 fn read_rc_file(core: &mut ShellCore) {
-    if ! core.db.flags.contains("i") {
+    if !core.db.flags.contains("i") {
         return;
     }
 
@@ -119,7 +124,7 @@ fn set_short_options(args: &mut Vec<String>, core: &mut ShellCore) {
 
 fn set_parameters(script_parts: Vec<String>, core: &mut ShellCore, command: &str) {
     match script_parts.is_empty() {
-        true  => {
+        true => {
             core.db.position_parameters[0] = vec![command.to_string()];
             core.script_name = "-".to_string();
         },
@@ -152,9 +157,9 @@ fn main() {
     set_o_options(&mut args, &mut core);
     set_short_options(&mut args, &mut core);
 
-    if ! c_opt {
+    if !c_opt {
         set_parameters(script_parts, &mut core, &command);
-    }else{
+    } else {
         main_c_option::set_parameters(&script_parts, &mut core, &args[0]);
         main_c_option::run_and_exit(&args, &script_parts, &mut core); //exit here
     }
@@ -174,8 +179,7 @@ fn set_history(core: &mut ShellCore, s: &str) {
     }
 
     core.history[0] = s.trim_end().replace("\n", "↵ \0").to_string();
-    if core.history[0].is_empty()
-    || (core.history.len() > 1 && core.history[0] == core.history[1]) {
+    if core.history[0].is_empty() || (core.history.len() > 1 && core.history[0] == core.history[1]) {
         core.history.remove(0);
     }
 }
@@ -193,7 +197,7 @@ fn main_loop(core: &mut ShellCore, command: &String) {
     if core.script_name != "-" {
         core.db.flags.retain(|f| f != 'i');
         if let Err(_) = feeder.set_file(&core.script_name) {
-            eprintln!("{}: {}: No such file or directory", command, &core.script_name); 
+            eprintln!("{}: {}: No such file or directory", command, &core.script_name);
             process::exit(2);
         }
     }
@@ -217,9 +221,9 @@ fn main_loop(core: &mut ShellCore, command: &String) {
     exit::normal(core);
 }
 
-
 fn feed_script(feeder: &mut Feeder, core: &mut ShellCore) -> (bool, bool) {
-    if let Err(e) = core.jobtable_check_status() {          //(continue, break)
+    if let Err(e) = core.jobtable_check_status() {
+        //(continue, break)
         e.print(core);
     }
 
@@ -240,7 +244,7 @@ fn feed_script(feeder: &mut Feeder, core: &mut ShellCore) -> (bool, bool) {
 
 fn parse_and_exec(feeder: &mut Feeder, core: &mut ShellCore, set_hist: bool) {
     core.sigint.store(false, Relaxed);
-    match Script::parse(feeder, core, false){
+    match Script::parse(feeder, core, false) {
         Ok(Some(mut s)) => {
             if let Err(e) = s.exec(core) {
                 e.print(core);

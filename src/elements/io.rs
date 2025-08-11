@@ -1,18 +1,20 @@
-//SPDX-FileCopyrightText: 2022 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2022 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDX-License-Identifier: BSD-3-Clause
 
 pub mod pipe;
 pub mod redirect;
 
 use std::os::unix::prelude::RawFd;
-use nix::{fcntl, unistd};
-use crate::ShellCore;
-use crate::error::exec::ExecError;
-use nix::errno::Errno;
-use crate::elements::Pipe;
-use crate::elements::io::redirect::Redirect;
 
-pub fn close(fd: RawFd, err_str: &str){
+use nix::{errno::Errno, fcntl, unistd};
+
+use crate::{
+    ShellCore,
+    elements::{Pipe, io::redirect::Redirect},
+    error::exec::ExecError,
+};
+
+pub fn close(fd: RawFd, err_str: &str) {
     if fd >= 0 {
         unistd::close(fd).expect(err_str);
     }
@@ -55,8 +57,7 @@ pub fn backup(from: RawFd) -> RawFd {
     if fcntl::fcntl(from, fcntl::F_GETFD).is_err() {
         return from;
     }
-    fcntl::fcntl(from, fcntl::F_DUPFD_CLOEXEC(10))
-           .expect("Can't allocate fd for backup")
+    fcntl::fcntl(from, fcntl::F_DUPFD_CLOEXEC(10)).expect("Can't allocate fd for backup")
 }
 
 pub fn connect(pipe: &mut Pipe, rs: &mut Vec<Redirect>, core: &mut ShellCore) -> Result<(), ExecError> {

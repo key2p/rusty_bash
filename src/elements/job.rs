@@ -1,34 +1,39 @@
-//SPDX-FileCopyrightText: 2022 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2022 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDX-License-Identifier: BSD-3-Clause
+
+use std::sync::atomic::Ordering::Relaxed;
+
+use nix::{
+    sys::wait::WaitStatus,
+    unistd,
+    unistd::{ForkResult, Pid},
+};
 
 use super::pipeline::Pipeline;
-use crate::signal;
-use crate::{proc_ctrl, Feeder, ShellCore};
-use crate::core::jobtable::JobEntry;
-use crate::utils::exit;
-use crate::error::exec::ExecError;
-use crate::error::parse::ParseError;
-use nix::sys::wait::WaitStatus;
-use nix::unistd;
-use nix::unistd::{Pid, ForkResult};
-use std::sync::atomic::Ordering::Relaxed;
+use crate::{
+    Feeder, ShellCore,
+    core::jobtable::JobEntry,
+    error::{exec::ExecError, parse::ParseError},
+    proc_ctrl, signal,
+    utils::exit,
+};
 
 #[derive(Debug, Clone, Default)]
 pub struct Job {
-    pub pipelines: Vec<Pipeline>,
+    pub pipelines:     Vec<Pipeline>,
     pub pipeline_ends: Vec<String>,
-    pub text: String,
+    pub text:          String,
 }
 
 impl Job {
     pub fn exec(&mut self, core: &mut ShellCore, bg: bool) -> Result<(), ExecError> {
         let pgid = match core.is_subshell {
-            true  => unistd::getpgrp(),
+            true => unistd::getpgrp(),
             false => Pid::from_raw(0),
         };
 
         match bg {
-            true  => self.exec_bg(core, pgid),
+            true => self.exec_bg(core, pgid),
             false => self.exec_fg(core, pgid)?,
         }
         Ok(())
@@ -69,16 +74,15 @@ impl Job {
         Ok(())
     }
 
-    fn check_stop(core: &mut ShellCore, text: &str,
-                  pids: &Vec<Option<Pid>>, waitstatuses: &Vec<WaitStatus>) {
+    fn check_stop(core: &mut ShellCore, text: &str, pids: &Vec<Option<Pid>>, waitstatuses: &Vec<WaitStatus>) {
         if core.is_subshell || pids.is_empty() || pids[0] == None {
             return;
         }
 
         for ws in waitstatuses {
-            if let WaitStatus::Stopped(_, _) = ws {
+            if let WaitStatus::Stopped(..) = ws {
                 let new_job_id = core.generate_new_job_id();
-                let job = JobEntry::new(pids.to_vec(), &waitstatuses, &text, "Stopped", new_job_id); 
+                let job = JobEntry::new(pids.to_vec(), &waitstatuses, &text, "Stopped", new_job_id);
                 core.job_table_priority.insert(0, new_job_id);
                 core.job_table.push(job);
                 return;
@@ -98,7 +102,7 @@ impl Job {
                 self.pipelines[0].commands[0].set_force_fork();
             }
             self.pipelines[0].exec(core, pgid).0
-        }else{
+        } else {
             match self.exec_fork_bg(core, pgid) {
                 Ok(pid) => vec![pid],
                 Err(e) => {
@@ -112,10 +116,10 @@ impl Job {
         let len = pids.len();
         let new_job_id = core.generate_new_job_id();
         core.job_table_priority.insert(0, new_job_id);
-        let mut entry = JobEntry::new(pids, &vec![ WaitStatus::StillAlive; len ],
-                &self.get_one_line_text(), "Running", new_job_id);
+        let mut entry =
+            JobEntry::new(pids, &vec![WaitStatus::StillAlive; len], &self.get_one_line_text(), "Running", new_job_id);
 
-        if ! core.options.query("monitor") {
+        if !core.options.query("monitor") {
             entry.no_control = true;
         }
 
@@ -125,7 +129,7 @@ impl Job {
     }
 
     fn exec_fork_bg(&mut self, core: &mut ShellCore, pgid: Pid) -> Result<Option<Pid>, ExecError> {
-        match unsafe{unistd::fork()? } {
+        match unsafe { unistd::fork()? } {
             ForkResult::Child => {
                 core.initialize_as_subshell(Pid::from_raw(0), pgid);
                 if let Err(e) = self.exec(core, false) {
@@ -157,17 +161,16 @@ impl Job {
         if feeder.starts_with("\n") {
             ans.text += &feeder.consume(1);
             true
-        }else{
+        } else {
             false
         }
     }
 
-    fn eat_pipeline(feeder: &mut Feeder, ans: &mut Job, core: &mut ShellCore)
-        -> Result<bool, ParseError> {
+    fn eat_pipeline(feeder: &mut Feeder, ans: &mut Job, core: &mut ShellCore) -> Result<bool, ParseError> {
         if let Some(pipeline) = Pipeline::parse(feeder, core)? {
-                ans.text += &pipeline.text.clone();
-                ans.pipelines.push(pipeline);
-                return Ok(true);
+            ans.text += &pipeline.text.clone();
+            ans.pipelines.push(pipeline);
+            return Ok(true);
         }
         Ok(false)
     }
@@ -189,20 +192,20 @@ impl Job {
 
     pub fn parse(feeder: &mut Feeder, core: &mut ShellCore) -> Result<Option<Job>, ParseError> {
         let mut ans = Self::default();
-        while Self::eat_blank_line(feeder, &mut ans, core) {} 
-        if ! Self::eat_pipeline(feeder, &mut ans, core)? {
+        while Self::eat_blank_line(feeder, &mut ans, core) {}
+        if !Self::eat_pipeline(feeder, &mut ans, core)? {
             if ans.text.is_empty() {
                 return Ok(None);
-            }else{
+            } else {
                 return Ok(Some(ans));
             }
         }
 
-        while Self::eat_and_or(feeder, &mut ans, core) { 
+        while Self::eat_and_or(feeder, &mut ans, core) {
             loop {
-                while Self::eat_blank_line(feeder, &mut ans, core) {} 
+                while Self::eat_blank_line(feeder, &mut ans, core) {}
                 if Self::eat_pipeline(feeder, &mut ans, core)? {
-                    break;  
+                    break;
                 }
                 if feeder.len() == 0 {
                     feeder.feed_additional_line(core)?;
@@ -214,7 +217,7 @@ impl Job {
         ans.text += &feeder.consume(com_num);
 
         match ans.pipelines.len() > 0 {
-            true  => Ok(Some(ans)),
+            true => Ok(Some(ans)),
             false => Ok(None),
         }
     }

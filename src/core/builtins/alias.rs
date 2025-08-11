@@ -1,5 +1,5 @@
-//SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2024 Ryuichi Ueda <ryuichiueda@gmail.com>
+// SPDX-License-Identifier: BSD-3-Clause
 
 use crate::ShellCore;
 
@@ -29,9 +29,9 @@ pub fn unalias(core: &mut ShellCore, args: &mut Vec<String>) -> i32 {
         return 0;
     }
 
-    args[1..].iter()
-        .for_each(|e| {core.aliases.remove_entry(e);} );
+    args[1..].iter().for_each(|e| {
+        core.aliases.remove_entry(e);
+    });
 
     0
 }
-

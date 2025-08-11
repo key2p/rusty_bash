@@ -1,34 +1,32 @@
-//SPDX-FileCopyrightText: 2023 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2023 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{Feeder, ShellCore};
-use crate::elements::io;
-use crate::error::exec::ExecError;
-use std::os::fd::IntoRawFd;
-use std::os::unix::prelude::RawFd;
-use nix::unistd;
-use nix::unistd::Pid;
+use std::os::{fd::IntoRawFd, unix::prelude::RawFd};
+
+use nix::{unistd, unistd::Pid};
+
+use crate::{Feeder, ShellCore, elements::io, error::exec::ExecError};
 
 #[derive(Debug, Clone)]
 pub struct Pipe {
-    pub text: String,
-    pub recv: RawFd,
-    pub send: RawFd,
-    pub prev: RawFd,
-    pub pgid: Pid,
-    pub lastpipe: bool,
+    pub text:            String,
+    pub recv:            RawFd,
+    pub send:            RawFd,
+    pub prev:            RawFd,
+    pub pgid:            Pid,
+    pub lastpipe:        bool,
     pub lastpipe_backup: RawFd,
 }
 
 impl Pipe {
     pub fn new(text: String) -> Pipe {
         Pipe {
-            text: text,
-            recv: -1,
-            send: -1,
-            prev: -1,
-            pgid: Pid::from_raw(0),
-            lastpipe: false,
+            text,
+            recv:            -1,
+            send:            -1,
+            prev:            -1,
+            pgid:            Pid::from_raw(0),
+            lastpipe:        false,
             lastpipe_backup: -1,
         }
     }
@@ -57,11 +55,7 @@ impl Pipe {
     pub fn parse(feeder: &mut Feeder, core: &mut ShellCore) -> Option<Pipe> {
         let len = feeder.scanner_pipe(core);
 
-        if len > 0 {
-            Some(Self::new(feeder.consume(len)))
-        }else{
-            None
-        }
+        if len > 0 { Some(Self::new(feeder.consume(len))) } else { None }
     }
 
     pub fn set(&mut self, prev: RawFd, pgid: Pid) {
@@ -84,8 +78,8 @@ impl Pipe {
     }
 
     pub fn parent_close(&mut self) {
-            io::close(self.send, "Cannot close parent pipe out");
-            io::close(self.prev,"Cannot close parent prev pipe out");
+        io::close(self.send, "Cannot close parent pipe out");
+        io::close(self.prev, "Cannot close parent prev pipe out");
     }
 
     pub fn is_connected(&self) -> bool {

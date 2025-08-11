@@ -1,24 +1,28 @@
-//SPDX-FileCopyrightText: 2022 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDX-License-Identifier: BSD-3-Clause
+// SPDX-FileCopyrightText: 2022 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDX-License-Identifier: BSD-3-Clause
 
-use crate::{ShellCore, Feeder};
-use crate::error::exec::ExecError;
-use crate::error::parse::ParseError;
-use crate::utils;
-use super::{Command, Pipe, Redirect};
-use crate::elements::command;
-use crate::elements::command::{BraceCommand, IfCommand, ParenCommand, WhileCommand};
 use nix::unistd::Pid;
+
+use super::{Command, Pipe, Redirect};
+use crate::{
+    Feeder, ShellCore,
+    elements::{
+        command,
+        command::{BraceCommand, IfCommand, ParenCommand, WhileCommand},
+    },
+    error::{exec::ExecError, parse::ParseError},
+    utils,
+};
 
 #[derive(Debug, Clone, Default)]
 pub struct FunctionDefinition {
-    pub text: String,
-    pub file: String,
-    name: String,
-    command: Option<Box<dyn Command>>,
+    pub text:   String,
+    pub file:   String,
+    name:       String,
+    command:    Option<Box<dyn Command>>,
     force_fork: bool,
-    _dummy: Vec<Redirect>,
-    lineno: usize,
+    _dummy:     Vec<Redirect>,
+    lineno:     usize,
 }
 
 impl Command for FunctionDefinition {
@@ -27,13 +31,27 @@ impl Command for FunctionDefinition {
         Ok(None)
     }
 
-    fn run(&mut self, _: &mut ShellCore, _: bool) -> Result<(), ExecError> {Ok(())}
-    fn get_text(&self) -> String { self.text.clone() }
-    fn get_redirects(&mut self) -> &mut Vec<Redirect> { &mut self._dummy }
-    fn get_lineno(&mut self) -> usize { self.lineno }
-    fn set_force_fork(&mut self) { self.force_fork = true; }
-    fn boxed_clone(&self) -> Box<dyn Command> {Box::new(self.clone())}
-    fn force_fork(&self) -> bool { self.force_fork }
+    fn run(&mut self, _: &mut ShellCore, _: bool) -> Result<(), ExecError> {
+        Ok(())
+    }
+    fn get_text(&self) -> String {
+        self.text.clone()
+    }
+    fn get_redirects(&mut self) -> &mut Vec<Redirect> {
+        &mut self._dummy
+    }
+    fn get_lineno(&mut self) -> usize {
+        self.lineno
+    }
+    fn set_force_fork(&mut self) {
+        self.force_fork = true;
+    }
+    fn boxed_clone(&self) -> Box<dyn Command> {
+        Box::new(self.clone())
+    }
+    fn force_fork(&self) -> bool {
+        self.force_fork
+    }
 
     fn pretty_print(&mut self, indent_num: usize) {
         self.pretty_print(indent_num);
@@ -62,8 +80,7 @@ impl FunctionDefinition {
         let mut dummy = Pipe::new("|".to_string());
 
         core.source_function_level += 1;
-        if let Err(e) = self.command.as_mut().unwrap()
-                        .exec(core, &mut dummy) {
+        if let Err(e) = self.command.as_mut().unwrap().exec(core, &mut dummy) {
             e.print(core);
         }
         core.return_flag = false;
@@ -95,7 +112,7 @@ impl FunctionDefinition {
 
         if feeder.starts_with("()") {
             self.text += &feeder.consume(2);
-        }else if ! has_function_keyword {
+        } else if !has_function_keyword {
             return false;
         }
 
@@ -104,11 +121,17 @@ impl FunctionDefinition {
     }
 
     fn eat_body(&mut self, feeder: &mut Feeder, core: &mut ShellCore) -> Result<(), ParseError> {
-        self.command = if let Some(a) = IfCommand::parse(feeder, core)? { Some(Box::new(a)) }
-        else if let Some(a) = ParenCommand::parse(feeder, core, false)? { Some(Box::new(a)) }
-        else if let Some(a) = BraceCommand::parse(feeder, core)? { Some(Box::new(a)) }
-        else if let Some(a) = WhileCommand::parse(feeder, core)? { Some(Box::new(a)) }
-        else {None};
+        self.command = if let Some(a) = IfCommand::parse(feeder, core)? {
+            Some(Box::new(a))
+        } else if let Some(a) = ParenCommand::parse(feeder, core, false)? {
+            Some(Box::new(a))
+        } else if let Some(a) = BraceCommand::parse(feeder, core)? {
+            Some(Box::new(a))
+        } else if let Some(a) = WhileCommand::parse(feeder, core)? {
+            Some(Box::new(a))
+        } else {
+            None
+        };
 
         if let Some(c) = &self.command {
             self.text += &c.get_text();
@@ -121,7 +144,7 @@ impl FunctionDefinition {
         feeder.set_backup();
         ans.lineno = feeder.lineno;
 
-        if ! ans.eat_header(feeder, core) {
+        if !ans.eat_header(feeder, core) {
             feeder.rewind();
             return Ok(None);
         }
@@ -137,7 +160,7 @@ impl FunctionDefinition {
                 ans.file = f.clone();
             }
             Ok(Some(ans))
-        }else{
+        } else {
             feeder.rewind();
             Ok(None)
         }

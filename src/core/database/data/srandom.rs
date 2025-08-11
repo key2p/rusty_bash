@@ -1,14 +1,17 @@
-//SPDXFileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
-//SPDXLicense-Identifier: BSD-3-Clause
+// SPDXFileCopyrightText: 2024 Ryuichi Ueda ryuichiueda@gmail.com
+// SPDXLicense-Identifier: BSD-3-Clause
 
-use crate::error::exec::ExecError;
-use rand_chacha::ChaCha20Rng;
-use rand_chacha::rand_core::{RngCore, SeedableRng};
+use rand_chacha::{
+    ChaCha20Rng,
+    rand_core::{RngCore, SeedableRng},
+};
+
 use super::Data;
+use crate::error::exec::ExecError;
 
 #[derive(Debug, Clone)]
 pub struct SRandomVar {
-    rng: ChaCha20Rng,
+    rng:  ChaCha20Rng,
     prev: String,
 }
 
@@ -17,7 +20,9 @@ impl Data for SRandomVar {
         Box::new(self.clone())
     }
 
-    fn print_body(&self) -> String { self.prev.clone() }
+    fn print_body(&self) -> String {
+        self.prev.clone()
+    }
 
     fn get_as_single(&mut self) -> Result<String, ExecError> {
         let rand = self.rng.next_u32();
@@ -29,16 +34,17 @@ impl Data for SRandomVar {
         self.prev.len()
     }
 
-    fn set_as_single(&mut self, _: &str) -> Result<(), ExecError> { Ok(()) }
+    fn set_as_single(&mut self, _: &str) -> Result<(), ExecError> {
+        Ok(())
+    }
 
-    fn is_special(&self) -> bool {true}
+    fn is_special(&self) -> bool {
+        true
+    }
 }
 
 impl SRandomVar {
     pub fn new() -> Self {
-        Self {
-            rng: ChaCha20Rng::from_os_rng(),
-            prev: "".to_string(),
-        }
+        Self { rng: ChaCha20Rng::from_os_rng(), prev: "".to_string() }
     }
 }
